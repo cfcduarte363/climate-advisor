@@ -333,8 +333,8 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
       </div>
       <div>
         <h4 data-t="ex2h">Design from the psychrometric chart</h4>
-        <p data-t="ex2p">The full year is projected onto a psychrometric chart with the Givoni–Milne building
-           bioclimatic zones. The percentage of hours falling in each zone tells you which passive
+        <p data-t="ex2p">The full year is projected onto a psychrometric chart with the Givoni building
+           bioclimatic zones as given by Manzano-Agugliaro et al. (2015). The percentage of hours falling in each zone tells you which passive
            strategies actually matter for this site.</p>
       </div>
       <div>
@@ -410,6 +410,7 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
         <li>Givoni, B. (1998). <i>Climate considerations in building and urban design</i>. Van Nostrand Reinhold. <span style="color:var(--faint)">Building bioclimatic chart.</span></li>
         <li>Lapithis, P. (2018). <i>Bioclimatic architecture and Cyprus</i>. Pantheon Cultural Association. <span style="color:var(--faint)">28 °C limit for unassisted air movement.</span></li>
         <li>Lechner, N. (2015). <i>Heating, cooling, lighting: Sustainable design methods for architects</i> (4th ed.). Wiley. <span style="color:var(--faint)">Comfort ventilation and night ventilation of mass.</span></li>
+        <li>Manzano-Agugliaro, F., Montoya, F. G., Sabio-Ortega, A., &amp; García-Cruz, A. (2015). Review of bioclimatic architecture strategies for achieving thermal comfort. <i>Renewable and Sustainable Energy Reviews, 49</i>, 736–755. <a href="https://doi.org/10.1016/j.rser.2015.04.095" target="_blank" rel="noopener noreferrer">doi.org</a> <span style="color:var(--faint)">Fourteen-zone bioclimatic chart.</span></li>
         <li>Milne, M., &amp; Givoni, B. (1979). Architectural design based on climate. In D. Watson (Ed.), <i>Energy conservation through building design</i> (pp. 96–113). McGraw-Hill. <span style="color:var(--faint)">Passive strategy zones.</span></li>
         <li>Spencer, J. W. (1971). Fourier series representation of the position of the sun. <i>Search, 2</i>(5), 172. <span style="color:var(--faint)">Declination and equation of time.</span></li>
         <li>NOAA Global Monitoring Laboratory. (n.d.). <i>Solar calculation details</i>. <a href="https://gml.noaa.gov/grad/solcalc/calcdetails.html" target="_blank" rel="noopener noreferrer">gml.noaa.gov</a> <span style="color:var(--faint)">Solar position algorithm.</span></li>
@@ -441,7 +442,7 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
 /* ------------------------------------------------------------ 0. IDENTITY -- */
 const APP = {
   name:        'Climate Advisor',
-  version:     '1.4.0',
+  version:     '1.6.1',
   author:      'Carlos C. Duarte',
   institution: 'Lisbon School of Architecture, Universidade de Lisboa',
   builtWith:   'Claude Opus 5 (Anthropic)',
@@ -1311,6 +1312,7 @@ function hideTip() { TIP.style.display = 'none'; }
 
 
 let PANELS = [];
+
 /**
  * Build a titled panel that owns one canvas. `o.render(ctx, W, H)` draws in CSS
  * pixels; the panel handles device-pixel scaling, resize and 3× PNG export, so
@@ -1575,97 +1577,217 @@ function buildOverview(host, epw) {
     fmt(100 * secN[prevail] / Math.max(1, wtot), 1) + ' % of hours · calm ' + fmt(100 * calm / Math.max(1, wtot), 1) + ' %'));
   host.appendChild(cards);
 
-  /* --- temperature envelope --------------------------------------------- */
-  host.appendChild(sectionHead('The shape of the year', 'Monthly envelopes built from the 8 760 hourly records'));
-  const g1 = el('div', { class:'grid g2' }); host.appendChild(g1);
+  /* --- temperature through the year --------------------------------------- */
+  host.appendChild(sectionHead('The shape of the year', 'Daily envelope for the whole year, or hourly detail for the days you select below'));
 
-  const dMin = monthly(epw, epw.data.tdb).map(v => v.min);
-  makePanel(g1, {
-    title:'Monthly temperature envelope',
-    note:'Outer band: absolute minimum to maximum. Inner band: mean daily minimum to mean daily maximum. Marker: monthly mean.',
-    aspect:1.55,
+  const sel = { d0: 0, d1: epw.nDays - 1 };
+  const tYearDom = niceDomain(tdb.min, tdb.max, 6, 0.06);
+
+  const rangeCap = el('span', { style:'font-size:12.5px;font-weight:600;color:var(--ink2)' });
+  const resetBtn = el('button', { class:'btn', text:'Whole year', onclick: () => { sel.d0 = 0; sel.d1 = epw.nDays - 1; onSelChange(); } });
+  const capRow = el('div', { class:'controls', style:'justify-content:space-between;align-items:center;margin:10px 0 0' }, [ rangeCap, resetBtn ]);
+  const brush = el('canvas', { class:'chart', style:'height:56px;margin-top:8px;border-radius:8px;touch-action:none' });
+  const brushWrap = el('div', null, [ capRow, brush ]);
+
+  function rangeText() {
+    if (sel.d0 === 0 && sel.d1 === epw.nDays - 1) return t('Whole year') + ' (' + epw.nDays + ' ' + t('days') + ')';
+    const a = dayToMonthDay(epw, sel.d0), b = dayToMonthDay(epw, sel.d1);
+    return a.day + ' ' + MON3[a.month] + ' – ' + b.day + ' ' + MON3[b.month] + ' (' + (sel.d1 - sel.d0 + 1) + ' ' + t('days') + ')';
+  }
+
+  let brushCtx = null, brushW = 0, brushH = 0;
+  function brushRect() { return plotRect(2, 4, brushW - 4, brushH - 16, 0, epw.nDays, 0, 1); }
+  function sizeBrush() {
+    const w = Math.max(220, brush.clientWidth);
+    const h = 56;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    brush.width = Math.round(w * dpr); brush.height = Math.round(h * dpr);
+    brush.style.height = h + 'px';
+    brushCtx = brush.getContext('2d');
+    brushCtx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    brushW = w; brushH = h;
+    drawBrush();
+  }
+  function drawBrush() {
+    if (!brushCtx) return;
+    const ctx = brushCtx, W = brushW, H = brushH;
+    ctx.clearRect(0, 0, W, H);
+    ctx.fillStyle = CH.white; ctx.fillRect(0, 0, W, H);
+    const P = brushRect();
+    const dom = niceDomain(tdb.min, tdb.max, 4, 0.08);
+    const Pm = plotRect(P.x, P.y, P.w, P.h, 0, epw.nDays, dom[0], dom[1]);
+    stroke(ctx, '#c9cfd6', 1.2); ctx.beginPath();
+    for (let d = 0; d < epw.nDays; d++) { const X = Pm.sx(d + 0.5), Y = Pm.sy(epw.daily.mean[d]); d ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+    ctx.stroke();
+    let acc = 0;
+    for (let m = 1; m < 12; m++) { acc += epw.monthDays[m - 1]; stroke(ctx, CH.line2, 1); seg(ctx, px(P.sx(acc)), P.y, px(P.sx(acc)), P.y + P.h); }
+    const x0 = P.sx(sel.d0), x1 = P.sx(sel.d1 + 1);
+    ctx.fillStyle = 'rgba(37,99,235,.16)'; ctx.fillRect(x0, P.y, x1 - x0, P.h);
+    stroke(ctx, '#2563EB', 2); seg(ctx, px(x0), P.y, px(x0), P.y + P.h); seg(ctx, px(x1), P.y, px(x1), P.y + P.h);
+    ctx.fillStyle = '#2563EB';
+    ctx.fillRect(x0 - 2, P.y + P.h / 2 - 9, 4, 18);
+    ctx.fillRect(x1 - 2, P.y + P.h / 2 - 9, 4, 18);
+    label(ctx, MON3[0], P.sx(0), P.y + P.h + 11, CH.faint, F(9), 'left', 'middle');
+    label(ctx, MON3[11], P.sx(epw.nDays), P.y + P.h + 11, CH.faint, F(9), 'right', 'middle');
+  }
+  function onSelChange() {
+    rangeCap.textContent = rangeText();
+    temp.draw();
+    drawBrush();
+  }
+
+  const temp = makePanel(host, {
+    title:'Temperature through the year',
+    note:'Shaded band: daily minimum to maximum. Line: daily mean. Drag the strip below to zoom into hourly detail for a shorter span.',
+    heightFn: W => clamp(Math.round(W / 2.7), 230, 420),
+    below: brushWrap,
     csv: () => {
-      const rows = [['Month','Absolute min (°C)','Mean daily min (°C)','Monthly mean (°C)','Mean daily max (°C)','Absolute max (°C)']];
-      const dm = monthlyDailyExtremes(epw);
-      for (let m = 0; m < 12; m++) rows.push([MONTHS[m], fmt(mTdb[m].min,1), fmt(dm.minMean[m],1), fmt(mTdb[m].mean,1), fmt(dm.maxMean[m],1), fmt(mTdb[m].max,1)]);
-      return csvHeader([['Chart','Monthly temperature envelope']]) + csvRows(rows);
-    },
-    render(ctx, W, H) {
-      const dm = monthlyDailyExtremes(epw);
-      const P = plotRect(48, 16, W - 62, H - 46, 0.5, 12.5, ...niceDomain(tdb.min, tdb.max, 6, 0.06));
-      drawAxes(ctx, P, { yLabel:'Dry-bulb temperature (°C)', xLabels:false, yCount:6 });
-      // zero line, when it falls inside the domain
-      if (P.ymin < 0 && P.ymax > 0) { stroke(ctx, '#c9cfd6', 1, [3,3]); seg(ctx, P.x, px(P.sy(0)), P.x + P.w, px(P.sy(0))); }
-      const bw = P.w / 12;
-      for (let m = 0; m < 12; m++) {
-        const cx = P.sx(m + 1), w1 = bw * 0.52, w2 = bw * 0.30;
-        ctx.fillStyle = 'rgba(37,99,235,.13)';
-        ctx.fillRect(cx - w1/2, P.sy(mTdb[m].max), w1, P.sy(mTdb[m].min) - P.sy(mTdb[m].max));
-        ctx.fillStyle = 'rgba(37,99,235,.34)';
-        ctx.fillRect(cx - w2/2, P.sy(dm.maxMean[m]), w2, P.sy(dm.minMean[m]) - P.sy(dm.maxMean[m]));
-        stroke(ctx, '#14171a', 2);
-        seg(ctx, cx - w2/2 - 3, px(P.sy(mTdb[m].mean)), cx + w2/2 + 3, px(P.sy(mTdb[m].mean)));
-        label(ctx, MON3[m], cx, P.y + P.h + 13, CH.muted, F(10), 'center', 'middle');
+      const whole = sel.d0 === 0 && sel.d1 === epw.nDays - 1;
+      if (whole) {
+        const rows = [['Day of year','Month','Day','Min (°C)','Mean (°C)','Max (°C)']];
+        for (let d = 0; d < epw.nDays; d++) {
+          const md = dayToMonthDay(epw, d);
+          rows.push([d + 1, MONTHS[md.month], md.day, fmt(epw.daily.min[d],1), fmt(epw.daily.mean[d],1), fmt(epw.daily.max[d],1)]);
+        }
+        return csvHeader([['Chart','Temperature through the year'],['Range', rangeText()]]) + csvRows(rows);
       }
-      swatchKey(ctx, P.x + 2, P.y + 2, [
-        { color:'rgba(37,99,235,.13)', label:'Absolute range' },
-        { color:'rgba(37,99,235,.34)', label:'Mean daily range' },
-        { color:'#14171a', label:'Monthly mean' }
-      ], { cols:3, colWidth:Math.min(150, P.w/3), rowHeight:14 });
-    },
-    hit(x, y, P) {
-      const R = plotRect(48, 16, P.W - 62, P.H - 46, 0.5, 12.5, 0, 1);
-      if (x < R.x || x > R.x + R.w) return null;
-      const m = clamp(Math.round(R.ix(x)) - 1, 0, 11);
-      const dm = monthlyDailyExtremes(epw);
-      return '<b>' + MONTHS[m] + '</b><br><span class="tm">Mean</span> <span class="tv">' + fmt(mTdb[m].mean,1) + ' °C</span>'
-           + '<br><span class="tm">Mean daily</span> <span class="tv">' + fmt(dm.minMean[m],1) + ' … ' + fmt(dm.maxMean[m],1) + ' °C</span>'
-           + '<br><span class="tm">Absolute</span> <span class="tv">' + fmt(mTdb[m].min,1) + ' … ' + fmt(mTdb[m].max,1) + ' °C</span>';
-    }
-  });
-
-  /* --- monthly solar ----------------------------------------------------- */
-  const mGhi = monthly(epw, epw.data.ghi), mDni = monthly(epw, epw.data.dni), mDhi = monthly(epw, epw.data.dhi);
-  makePanel(g1, {
-    title:'Monthly solar radiation',
-    note:'Energy arriving per square metre each month. Global horizontal drives roof and site gains; direct normal drives what a shading device must intercept.',
-    aspect:1.55,
-    csv: () => {
-      const rows = [['Month','Global horizontal (kWh/m²)','Direct normal (kWh/m²)','Diffuse horizontal (kWh/m²)']];
-      for (let m = 0; m < 12; m++) rows.push([MONTHS[m], fmt(mGhi[m].sum/1000,1), fmt(mDni[m].sum/1000,1), fmt(mDhi[m].sum/1000,1)]);
-      rows.push(['Year', fmt(ghiTot,1), fmt(dniTot,1), fmt(stats(epw.data.dhi).sum/1000,1)]);
-      return csvHeader([['Chart','Monthly solar radiation']]) + csvRows(rows);
+      const rows = [['Day of year','Month','Day','Hour','Dry bulb (°C)']];
+      for (let d = sel.d0; d <= sel.d1; d++) {
+        const md = dayToMonthDay(epw, d);
+        for (let h = 0; h < 24; h++) {
+          const i = d * 24 + h; if (i >= epw.n) break;
+          rows.push([d + 1, MONTHS[md.month], md.day, h, fmt(epw.data.tdb[i],1)]);
+        }
+      }
+      return csvHeader([['Chart','Temperature through the year'],['Range', rangeText()]]) + csvRows(rows);
     },
     render(ctx, W, H) {
-      const series = [
-        { name:'Global horizontal', color:CAT[3], v:mGhi.map(x => x.sum/1000) },
-        { name:'Direct normal',     color:CAT[1], v:mDni.map(x => x.sum/1000) },
-        { name:'Diffuse horizontal',color:CAT[7], v:mDhi.map(x => x.sum/1000) }
-      ];
-      let mx = 0; series.forEach(s => s.v.forEach(v => { if (v > mx) mx = v; }));
-      const P = plotRect(48, 30, W - 62, H - 60, 0.5, 12.5, 0, niceDomain(0, mx, 5, 0.08)[1]);
-      drawAxes(ctx, P, { yLabel:'kWh/m² per month', xLabels:false, yCount:5 });
-      const bw = P.w / 12, gw = bw * 0.74 / 3;
-      for (let m = 0; m < 12; m++) {
-        const x0 = P.sx(m + 1) - bw * 0.37;
-        series.forEach((s, k) => {
-          const h = P.sy(0) - P.sy(s.v[m]);
-          ctx.fillStyle = s.color;
-          roundTopRect(ctx, x0 + k * gw + 1, P.sy(s.v[m]), gw - 2, h, 3);
+      const whole = sel.d0 === 0 && sel.d1 === epw.nDays - 1;
+      if (whole) {
+        const P = plotRect(48, 16, W - 62, H - 50, 0, epw.nDays, tYearDom[0], tYearDom[1]);
+        drawAxes(ctx, P, { yLabel:'Dry-bulb temperature (°C)', xLabels:false, yCount:6 });
+        if (P.ymin < 0 && P.ymax > 0) { stroke(ctx, '#c9cfd6', 1, [3,3]); seg(ctx, P.x, px(P.sy(0)), P.x + P.w, px(P.sy(0))); }
+        ctx.beginPath(); ctx.moveTo(P.sx(0), P.sy(epw.daily.min[0]));
+        for (let d = 0; d < epw.nDays; d++) ctx.lineTo(P.sx(d + 1), P.sy(epw.daily.max[d]));
+        for (let d = epw.nDays - 1; d >= 0; d--) ctx.lineTo(P.sx(d + 1), P.sy(epw.daily.min[d]));
+        ctx.closePath(); ctx.fillStyle = 'rgba(37,99,235,.20)'; ctx.fill();
+        stroke(ctx, '#14171a', 1.6); ctx.beginPath();
+        for (let d = 0; d < epw.nDays; d++) { const X = P.sx(d + 0.5), Y = P.sy(epw.daily.mean[d]); d ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
+        ctx.stroke();
+        monthAxis(ctx, P, epw.monthDays, { tickColor:CH.line2 });
+        swatchKey(ctx, P.x + 2, P.y + 2, [
+          { color:'rgba(37,99,235,.20)', label:'Daily min – max' },
+          { color:'#14171a', label:'Daily mean' }
+        ], { cols:2, colWidth:Math.min(160, P.w/2), rowHeight:14 });
+      } else {
+        const h0 = sel.d0 * 24, h1 = Math.min(epw.n, (sel.d1 + 1) * 24);
+        let mn = Infinity, mx = -Infinity;
+        for (let i = h0; i < h1; i++) { const v = epw.data.tdb[i]; if (isFinite(v)) { if (v < mn) mn = v; if (v > mx) mx = v; } }
+        const yd = niceDomain(mn, mx, 6, 0.10);
+        const P = plotRect(48, 16, W - 62, H - 50, h0, h1, yd[0], yd[1]);
+        drawAxes(ctx, P, { yLabel:'Dry-bulb temperature (°C)', xLabels:false, yCount:6 });
+        if (P.ymin < 0 && P.ymax > 0) { stroke(ctx, '#c9cfd6', 1, [3,3]); seg(ctx, P.x, px(P.sy(0)), P.x + P.w, px(P.sy(0))); }
+        stroke(ctx, CAT[0], 1.8); ctx.beginPath();
+        let started = false;
+        for (let i = h0; i < h1; i++) {
+          const v = epw.data.tdb[i]; if (!isFinite(v)) continue;
+          const X = P.sx(i + 0.5), Y = P.sy(v);
+          if (!started) { ctx.moveTo(X, Y); started = true; } else ctx.lineTo(X, Y);
+        }
+        ctx.stroke();
+        dayTicks(sel.d0, sel.d1).forEach(d => {
+          const X = px(P.sx(d * 24));
+          stroke(ctx, CH.line2, 1); seg(ctx, X, P.y, X, P.y + P.h);
+          const md = dayToMonthDay(epw, d);
+          label(ctx, md.day + ' ' + MON3[md.month], P.sx(d * 24), P.y + P.h + 13, CH.muted, F(10), 'center', 'middle');
         });
-        label(ctx, MON3[m], P.sx(m + 1), P.y + P.h + 13, CH.muted, F(10), 'center', 'middle');
       }
-      swatchKey(ctx, P.x, 8, series.map(s => ({ color:s.color, label:s.name })), { cols:3, colWidth:Math.min(160, P.w/3), rowHeight:14 });
     },
-    hit(x, y, P) {
-      const R = plotRect(48, 30, P.W - 62, P.H - 60, 0.5, 12.5, 0, 1);
+    hit(x, y, P0) {
+      const whole = sel.d0 === 0 && sel.d1 === epw.nDays - 1;
+      if (whole) {
+        const R = plotRect(48, 16, P0.W - 62, P0.H - 50, 0, epw.nDays, 0, 1);
+        if (x < R.x || x > R.x + R.w) return null;
+        const d = clamp(Math.floor(R.ix(x)), 0, epw.nDays - 1);
+        const md = dayToMonthDay(epw, d);
+        return '<b>' + md.day + ' ' + MONTHS[md.month] + '</b>'
+             + '<br><span class="tm">Min … max</span> <span class="tv">' + fmt(epw.daily.min[d],1) + ' … ' + fmt(epw.daily.max[d],1) + ' °C</span>'
+             + '<br><span class="tm">Mean</span> <span class="tv">' + fmt(epw.daily.mean[d],1) + ' °C</span>';
+      }
+      const h0 = sel.d0 * 24, h1 = Math.min(epw.n, (sel.d1 + 1) * 24);
+      const R = plotRect(48, 16, P0.W - 62, P0.H - 50, h0, h1, 0, 1);
       if (x < R.x || x > R.x + R.w) return null;
-      const m = clamp(Math.round(R.ix(x)) - 1, 0, 11);
-      return '<b>' + MONTHS[m] + '</b><br><span class="tm">Global horiz.</span> <span class="tv">' + fmt(mGhi[m].sum/1000,1) + ' kWh/m²</span>'
-           + '<br><span class="tm">Direct normal</span> <span class="tv">' + fmt(mDni[m].sum/1000,1) + ' kWh/m²</span>'
-           + '<br><span class="tm">Diffuse horiz.</span> <span class="tv">' + fmt(mDhi[m].sum/1000,1) + ' kWh/m²</span>';
+      const i = clamp(Math.floor(R.ix(x)), h0, h1 - 1);
+      const md = dayToMonthDay(epw, Math.floor(i / 24));
+      const hh = i % 24;
+      return '<b>' + md.day + ' ' + MONTHS[md.month] + ', ' + String(hh).padStart(2,'0') + ':00</b>'
+           + '<br><span class="tv">' + fmt(epw.data.tdb[i],1) + ' °C</span>';
     }
   });
+
+  rangeCap.textContent = rangeText();
+  new ResizeObserver(() => sizeBrush()).observe(brush);
+  requestAnimationFrame(sizeBrush);
+
+  const HANDLE_PX = 8;
+  let dragMode = null, anchorDay = 0, panStartDay = 0, panStartSel = null;
+  function dayAt(clientX) {
+    const r = brush.getBoundingClientRect();
+    const P = brushRect();
+    return clamp(Math.round(P.ix(clientX - r.left)), 0, epw.nDays - 1);
+  }
+  /** Like dayAt, but for the right handle: it sits at a day *boundary* (sx(d1+1)),
+      one past the last valid day index, so its own range must reach epw.nDays. */
+  function boundaryAt(clientX) {
+    const r = brush.getBoundingClientRect();
+    const P = brushRect();
+    return clamp(Math.round(P.ix(clientX - r.left)), 0, epw.nDays);
+  }
+  function edgesPx() {
+    const P = brushRect();
+    return { P, x0: P.sx(sel.d0), x1: P.sx(sel.d1 + 1) };
+  }
+  brush.addEventListener('pointerdown', ev => {
+    const r = brush.getBoundingClientRect();
+    const { x0, x1 } = edgesPx();
+    const xPix = ev.clientX - r.left;
+    const wholeYear = sel.d0 === 0 && sel.d1 === epw.nDays - 1;
+    const nearLeft = Math.abs(xPix - x0) <= HANDLE_PX, nearRight = Math.abs(xPix - x1) <= HANDLE_PX;
+    if (nearLeft && nearRight) dragMode = Math.abs(xPix - x0) <= Math.abs(xPix - x1) ? 'left' : 'right';
+    else if (nearLeft) dragMode = 'left';
+    else if (nearRight) dragMode = 'right';
+    // a press inside a band that already spans the whole year has nowhere to pan to,
+    // so it starts a fresh selection instead of silently doing nothing
+    else if (!wholeYear && xPix > x0 && xPix < x1) { dragMode = 'pan'; panStartDay = dayAt(ev.clientX); panStartSel = { d0: sel.d0, d1: sel.d1 }; }
+    else { dragMode = 'new'; anchorDay = dayAt(ev.clientX); sel.d0 = sel.d1 = anchorDay; onSelChange(); }
+    brush.setPointerCapture(ev.pointerId);
+    ev.preventDefault();
+  });
+  brush.addEventListener('pointermove', ev => {
+    if (dragMode) {
+      const d = dayAt(ev.clientX);
+      // the right handle sits at the pixel boundary AFTER day d1 (sx(d1+1)), one day
+      // ahead of what dayAt() reports for that same pixel, so it is offset back by one
+      // to land exactly on the pixel it started from when grabbed without moving
+      if (dragMode === 'left') sel.d0 = clamp(Math.min(d, sel.d1), 0, sel.d1);
+      else if (dragMode === 'right') sel.d1 = clamp(Math.max(boundaryAt(ev.clientX) - 1, sel.d0), sel.d0, epw.nDays - 1);
+      else if (dragMode === 'pan') {
+        const delta = d - panStartDay, span = panStartSel.d1 - panStartSel.d0;
+        const nd0 = clamp(panStartSel.d0 + delta, 0, epw.nDays - 1 - span);
+        sel.d0 = nd0; sel.d1 = nd0 + span;
+      } else if (dragMode === 'new') { sel.d0 = Math.min(anchorDay, d); sel.d1 = Math.max(anchorDay, d); }
+      onSelChange();
+      return;
+    }
+    const r = brush.getBoundingClientRect();
+    const { x0, x1 } = edgesPx();
+    const xPix = ev.clientX - r.left;
+    brush.style.cursor = (Math.abs(xPix - x0) <= HANDLE_PX || Math.abs(xPix - x1) <= HANDLE_PX) ? 'ew-resize'
+                        : (xPix > x0 && xPix < x1) ? 'grab' : 'crosshair';
+  });
+  brush.addEventListener('pointerup', () => { dragMode = null; });
+  brush.addEventListener('pointercancel', () => { dragMode = null; });
+  brush.addEventListener('dblclick', () => { sel.d0 = 0; sel.d1 = epw.nDays - 1; onSelChange(); });
 
   /* --- ground temperature ------------------------------------------------ */
   const g2 = el('div', { class:'grid g2' });
@@ -1787,6 +1909,29 @@ function monthlyDailyExtremes(epw) {
   }
   for (let m = 0; m < 12; m++) { if (cnt[m]) { minMean[m] /= cnt[m]; maxMean[m] /= cnt[m]; } else { minMean[m] = NaN; maxMean[m] = NaN; } }
   return (epw._mde = { minMean, maxMean });
+}
+
+/** 0-based day-of-year -> { month (0-based), day (1-based day-of-month) }. */
+function dayToMonthDay(epw, d) {
+  let m = 0, acc = 0;
+  while (m < 11 && acc + epw.monthDays[m] <= d) { acc += epw.monthDays[m]; m++; }
+  return { month: m, day: d - acc + 1 };
+}
+
+/**
+ * Day-of-year indices to draw gridlines/labels at for a [d0, d1] window, picked
+ * from a fixed step table so a 5-day and a 300-day window both get a readable,
+ * roughly-constant number of ticks (never more than ~11).
+ */
+function dayTicks(d0, d1) {
+  const span = d1 - d0 + 1;
+  const steps = [1, 2, 3, 5, 7, 10, 14, 21, 30, 45, 60, 90, 120, 182];
+  let step = steps[steps.length - 1];
+  for (const s of steps) { if (span / s <= 10) { step = s; break; } }
+  const out = [];
+  for (let d = d0; d <= d1; d += step) out.push(d);
+  if (out[out.length - 1] !== d1) out.push(d1);
+  return out;
 }
 
 function roundTopRect(ctx, x, y, w, h, r) {
@@ -2520,127 +2665,222 @@ function buildWind(host, epw) {
     }
   });
 
+  /* --- Beaufort scale ------------------------------------------------------ */
+  host.appendChild(sectionHead('Beaufort scale', 'The wind force scale as codified by the World Meteorological Organization, in metres per second'));
+  host.appendChild(beaufortTable());
+
   function refresh() { PANELS.forEach(p => { if (host.contains(p.root)) p.draw(); }); }
+}
+
+/**
+ * Beaufort wind force scale, World Meteorological Organization definition
+ * (10-minute mean wind speed at 10 m height), converted from the WMO knot
+ * bands using 1 kn = 0.5144 m/s. Cross-checked against the UK Met Office
+ * and Royal Meteorological Society tables.
+ */
+const BEAUFORT = [
+  { f:0,  term:'Calm',            vmin:0.0,  vmax:0.2,  effect:'Smoke rises vertically' },
+  { f:1,  term:'Light air',       vmin:0.3,  vmax:1.5,  effect:'Wind motion visible in smoke, not in wind vanes' },
+  { f:2,  term:'Light breeze',    vmin:1.6,  vmax:3.3,  effect:'Wind felt on the face; leaves rustle' },
+  { f:3,  term:'Gentle breeze',   vmin:3.4,  vmax:5.4,  effect:'Leaves and small twigs in constant motion' },
+  { f:4,  term:'Moderate breeze', vmin:5.5,  vmax:7.9,  effect:'Raises dust and loose paper; small branches move' },
+  { f:5,  term:'Fresh breeze',    vmin:8.0,  vmax:10.7, effect:'Small trees in leaf begin to sway' },
+  { f:6,  term:'Strong breeze',   vmin:10.8, vmax:13.8, effect:'Large branches in motion; umbrellas used with difficulty' },
+  { f:7,  term:'Near gale',       vmin:13.9, vmax:17.1, effect:'Whole trees in motion; walking against the wind is an effort' },
+  { f:8,  term:'Gale',            vmin:17.2, vmax:20.7, effect:'Twigs break off trees; walking is generally impeded' },
+  { f:9,  term:'Strong gale',     vmin:20.8, vmax:24.4, effect:'Slight structural damage — chimney pots and roof slates may lift' },
+  { f:10, term:'Storm',           vmin:24.5, vmax:28.4, effect:'Trees uprooted; considerable structural damage' },
+  { f:11, term:'Violent storm',   vmin:28.5, vmax:32.6, effect:'Widespread damage' },
+  { f:12, term:'Hurricane',       vmin:32.7, vmax:null, effect:'Devastation' }
+];
+
+function beaufortTable() {
+  const range = b => b.vmax === null ? '≥ ' + fmt(b.vmin,1) : fmt(b.vmin,1) + '–' + fmt(b.vmax,1);
+  const cols = ['Force','Description','Wind speed (m/s)','Effects on land'];
+  const thead = el('thead', null, [ el('tr', null, cols.map(c => el('th', { text:c }))) ]);
+  const tb = el('tbody');
+  BEAUFORT.forEach(b => tb.appendChild(el('tr', null, [
+    el('td', { text:String(b.f) }),
+    el('td', { text:b.term, style:'text-align:left' }),
+    el('td', { text:range(b) }),
+    el('td', { text:b.effect, style:'text-align:left;font-family:var(--sans);color:var(--muted)' })
+  ])));
+  const btn = el('button', { class:'icobtn', text:'CSV', onclick: () => {
+    const rows = [cols].concat(BEAUFORT.map(b => [b.f, t(b.term), range(b), t(b.effect)]));
+    download(new Blob([csvHeader([['Table','Beaufort scale'],['Source','World Meteorological Organization / UK Met Office']]) + csvRows(rows)], { type:'text/csv;charset=utf-8' }),
+             'beaufort-scale.csv');
+    toast('CSV exported');
+  }});
+  const tbl = el('table', { class:'data' }, [thead, tb]);
+  return el('div', { class:'panel' }, [
+    el('div', { class:'panel-head' }, [ el('div', { class:'panel-title' }, [ el('h3', { text:'Beaufort scale' }) ]),
+                                        el('div', { class:'panel-tools' }, [btn]) ]),
+    el('div', { class:'panel-body' }, [
+      el('div', { class:'tbl-scroll' }, [tbl]),
+      el('p', { class:'hint', text:'World Meteorological Organization scale, 10-minute mean wind speed at 10 m height. Source: Met Office and Royal Meteorological Society.' })
+    ])
+  ]);
 }
 
 /* ==================================================== PAGE: PSYCHROMETRICS */
 /**
- * Bioclimatic zone definitions after Givoni (1969, 1992) and Milne & Givoni
- * (1979), in the form used by the building bioclimatic chart. Each zone is both
- * a drawable region and a test applied to every hour of the year.
- *   `top(t)` / `bot(t)`  humidity-ratio bounds in kg/kg at dry-bulb t
- *   `test(ctx)`          predicate on an hour, given precomputed properties
- * Zones deliberately overlap: several strategies can serve the same hour, and
- * the honest reading is how many hours each one could cover.
+ * Building bioclimatic chart after Givoni, in the fourteen-zone form of
+ * Manzano-Agugliaro et al. (2015, Fig. 1 and Section 3). Every boundary is built
+ * from the intersections of dry-bulb temperature and relative humidity stated in
+ * that text:
+ *   - a bound given as a range of relative humidity follows that RH curve;
+ *   - a bound given as a "dotted line" between intersections is a straight
+ *     segment on the chart (dry bulb against humidity ratio);
+ *   - a bound given only as a temperature is a vertical line.
+ * Two bounds the text leaves unstated are taken from the figure: the floor of
+ * zones 9 and 11 is the humidity ratio of the 20 °C / 20 % corner of zone 2
+ * (zone 11's own 44 °C / 5 % corner lies on the same level), and the floor of
+ * zone 10 is the wet-bulb line through that corner, which is the path of
+ * adiabatic evaporative cooling.
+ * Each zone is one closed polygon in (t, w) that is both drawn and used as the
+ * membership test, so what the chart shows and what the summary counts agree.
+ * Zones overlap, as they do in the source.
  */
-function bioZones(p, Tlo, Thi, ventMax) {
-  const w80 = t => wFromRH(t, 80, p);
-  const wsat = t => wFromRH(t, 100, p);
-  const WLO = 0.004, WHI = 0.012, WVENT = 0.017;
-  const evapTo = twbMax => t => Math.max(0, Math.min(wFromTwb(t, twbMax, p), wsat(t)));
-  // Warm-side limits are absolute temperatures taken from the literature, not
-  // offsets from the comfort band: the physiology does not move when a student
-  // drags the comfort slider. See T_BREEZE / ventMax / T_MASS below.
-  const T_BREEZE = 28;                        // unassisted air movement (Lapithis, 2018)
-  const T_VENT   = Math.max(Thi, ventMax);    // with 1.5–2.0 m/s (Givoni, 1992)
-  const T_MASS   = 32;                        // upper bound of useful daytime mass
-  const T_FLUSH  = 36;                        // upper bound of night-flushed mass
-  const brz = Math.max(Thi, T_BREEZE);
-  return [
-    { key:'comfort', name:'Comfort zone', color:'#65A30D', short:'No system required',
-      t0:Tlo, t1:Thi, bot:() => WLO, top:t => Math.min(WHI, w80(t)),
-      test:h => h.t >= Tlo && h.t <= Thi && h.w >= WLO && h.w <= WHI && h.rh <= 80 },
+const BIO_TMIN = -60, BIO_TMAX = 70;
 
-    { key:'gains', name:'Internal heat gains', color:'#D97706', short:'Occupants, lighting and equipment cover the gap',
-      t0:Tlo - 7.2, t1:Tlo, bot:() => 0, top:t => Math.min(WHI, w80(t)),
-      test:h => h.t >= Tlo - 7.2 && h.t < Tlo && h.w <= WHI && h.rh <= 80 },
+function bioZones(p) {
+  const W = (t, rh) => wFromRH(t, rh, p);
+  const pt = (t, rh) => [[t, W(t, rh)]];
+  const along = (f, t1, t2) => {
+    const n = Math.max(2, Math.ceil(Math.abs(t2 - t1) / 0.25)), a = [];
+    for (let k = 0; k <= n; k++) { const t = t1 + (t2 - t1) * k / n; a.push([t, f(t)]); }
+    return a;
+  };
+  const rhEdge = (rh, t1, t2) => along(t => W(t, rh), t1, t2);
+  const poly = (...parts) => [].concat(...parts);
 
-    { key:'solar', name:'Passive solar heating', color:'#DC2626', short:'South glazing with mass to store the gain',
-      t0:Tlo - 12, t1:Tlo - 7.2, bot:() => 0, top:t => Math.min(WHI, w80(t)),
-      test:h => h.t >= Tlo - 12 && h.t < Tlo - 7.2 && h.w <= WHI },
+  const wB   = W(20, 20);                                  // 20 °C, 20 % — lower-left corner of zone 2
+  const twbB = twbFromW(20, wB, p);
+  const warm2 = poly(rhEdge(20, 20, 27), pt(27, 50), pt(24, 80));   // warm edge of zone 2, bottom to apex
 
-    { key:'vent', name:'Cross ventilation', color:'#0891B2',
-      short:'Unassisted breezes; effective to about ' + T_BREEZE + ' °C (Lapithis, 2018)',
-      t0:Thi, t1:brz, bot:() => WLO, top:t => Math.min(WVENT, w80(t)),
-      test:h => h.t > Thi && h.t <= T_BREEZE && h.w <= WVENT && h.rh <= 80 },
+  const Z = [
+    { key:'comfort', n:1, name:'Comfort zone', color:'#84CC16', alpha:0.26, draw:14, lab:[23.5, 45],
+      short:'21–26 °C, 20–70 % RH. No system required',
+      poly:poly(rhEdge(20, 21, 26), rhEdge(70, 26, 21)) },
 
-    { key:'fanvent', name:'Ventilation with elevated air speed', color:'#3B82F6',
-      short:'Needs 1.5–2.0 m/s at the occupant — ceiling or desk fans (Givoni, 1992)',
-      t0:brz, t1:T_VENT, bot:() => WLO, top:t => Math.min(WVENT, w80(t)),
-      test:h => h.t > T_BREEZE && h.t <= T_VENT && h.w <= WVENT && h.rh <= 80 },
+    { key:'permissible', n:2, name:'Permissible comfort zone', color:'#16A34A', alpha:0.20, draw:13, lab:[22.5, 75],
+      short:'20–27 °C, 20–80 % RH, cut by the line 24 °C / 80 % – 27 °C / 50 %',
+      poly:poly(rhEdge(20, 20, 27), pt(27, 50), pt(24, 80), rhEdge(80, 24, 20)) },
 
-    { key:'mass', name:'High thermal mass', color:'#7C3AED', short:'Needs a daily swing of at least 8 K',
-      t0:Thi, t1:Math.max(Thi, T_MASS), bot:() => 0, top:() => WHI,
-      test:h => h.t > Thi && h.t <= T_MASS && h.w <= WHI && h.range >= 8 },
+    { key:'gains', n:3, name:'Heating by internal gains', color:'#06B6D4', draw:6, lab:[16.75, 50],
+      short:'13.5–20 °C. Occupants, lighting and equipment',
+      poly:poly([[13.5, 0], [20, 0]], rhEdge(100, 20, 13.5)) },
 
-    { key:'massnight', name:'Mass with night ventilation', color:'#2563EB',
-      short:'Seal by day, flush after dark; needs a swing of at least 10 K',
-      t0:brz, t1:Math.max(brz, T_FLUSH), bot:() => 0, top:() => WHI,
-      test:h => h.t > T_BREEZE && h.t <= T_FLUSH && h.w <= WHI && h.range >= 10 },
+    { key:'psolar', n:4, name:'Passive solar heating', color:'#3B82F6', draw:5, lab:[10.25, 60],
+      short:'7–13.5 °C. Glazing, sunspaces and Trombe walls with mass',
+      poly:poly([[7, 0], [13.5, 0]], rhEdge(100, 13.5, 7)) },
 
-    { key:'evap', name:'Direct evaporative cooling', color:'#0D9488', short:'Only where the air is dry — wet bulb below 22 °C',
-      t0:Thi, t1:Thi + 18, bot:() => 0, top:evapTo(22),
-      test:h => h.t > Thi && h.twb <= 22 && h.w < WHI },
+    { key:'asolar', n:5, name:'Active solar heating', color:'#1E40AF', draw:4, lab:[4, 70],
+      short:'1–7 °C. Solar collectors feeding radiant floors or radiators',
+      poly:poly([[1, 0], [7, 0]], rhEdge(100, 7, 1)) },
 
-    { key:'dehum', name:'Dehumidification required', color:'#DB2777', short:'Moisture, not heat, is the problem',
-      t0:Tlo, t1:Math.max(Tlo, T_VENT), bot:() => WHI, top:t => wsat(t),
-      test:h => h.w > WHI && h.t >= Tlo && h.t <= T_VENT },
+    { key:'humid', n:6, name:'Humidification', color:'#D946EF', draw:7, lab:[14, 0.0016, true],
+      short:'Up to 22.5 °C, below 40 % RH at 10 °C. Vegetation, water surfaces',
+      poly:poly([[BIO_TMIN, 0], [22.5, 0], [22.5, W(10, 40)], [10, W(10, 40)]], rhEdge(40, 10, BIO_TMIN)) },
 
-    { key:'humid', name:'Humidification required', color:'#a8afb5', short:'Very dry air; a winter issue in continental climates',
-      t0:Tlo, t1:Thi, bot:() => 0, top:() => WLO,
-      test:h => h.w < WLO && h.t >= Tlo && h.t <= Thi },
+    { key:'heat', n:7, name:'Conventional heating', color:'#6D4C9F', draw:3, lab:[-2.5, 70],
+      short:'Below 1 °C (the source chart starts at −5 °C)',
+      poly:poly([[BIO_TMIN, 0], [1, 0]], rhEdge(100, 1, BIO_TMIN)) },
 
-    // Beyond the reach of passive measures. The lower bound is set well off the
-    // chart; the saturation clip trims it to whatever the axis actually shows.
-    { key:'heat', name:'Active heating required', color:'#334155', alpha:0.16,
-      short:'Too cold for gains, solar or mass to close the gap on their own',
-      t0:-60, t1:Tlo - 12, bot:() => 0, top:t => wsat(t),
-      test:h => h.t < Tlo - 12 }
+    { key:'shade', n:8, name:'Solar protection', color:'#EAB308', alpha:0.06, draw:1, lab:null,
+      short:'From 20 °C upwards. Shading of openings and envelope',
+      poly:poly([[20, 0], [BIO_TMAX, 0]], rhEdge(100, BIO_TMAX, 20)) },
+
+    { key:'mass', n:9, name:'Cooling by high thermal mass', color:'#F59E0B', draw:10, lab:[33, 0.0068], excl:true,
+      short:'20–35 °C, below the line 24 °C / 80 % – 35 °C / 30 %',
+      poly:poly(warm2, pt(35, 30), [[35, wB]]) },
+
+    { key:'evap', n:10, name:'Evaporative cooling', color:'#F97316', draw:9, lab:[37.5, 0.0040], excl:true,
+      short:'20–40.5 °C, below 25.5 °C / 75 % – 38.5 °C / 20 % – 40.5 °C / 10 %',
+      poly:poly(warm2, pt(25.5, 75), pt(38.5, 20), pt(40.5, 10), [[40.5, 0]],
+                along(t => Math.max(0, wFromTwb(t, twbB, p)), 40.5, 20)) },
+
+    { key:'massnight', n:11, name:'High thermal mass with night ventilation', color:'#C2410C', draw:8, lab:[29.5, 0.0055], excl:true,
+      short:'20–44 °C, below 24 °C / 80 % – 31.5 °C / 32 % – 44 °C / 5 %',
+      poly:poly(warm2, pt(31.5, 32), pt(44, 5)) },
+
+    { key:'vent', n:12, name:'Natural and mechanical ventilation', color:'#DC2626', draw:11, lab:[21.5, 88], excl:true,
+      short:'20–31.5 °C, 20–95 % RH, cut by the line 31.5 °C / 50 % – 26.5 °C / 95 %',
+      poly:poly(rhEdge(20, 20, 31.5), pt(31.5, 50), pt(26.5, 95), rhEdge(95, 26.5, 20)) },
+
+    { key:'ac', n:13, name:'Air conditioning', color:'#7F1D1D', alpha:0.12, draw:2, lab:[40, 0.0150], residual:true,
+      short:'Warm hours below 80 % RH that no passive zone reaches',
+      poly:poly([[20, 0], [BIO_TMAX, 0]], rhEdge(80, BIO_TMAX, 20)) },
+
+    { key:'dehum', n:14, name:'Conventional dehumidification', color:'#86198F', draw:12, lab:[28.5, 90],
+      short:'Above 25 °C and above 80 % RH',
+      poly:poly(rhEdge(80, 25, BIO_TMAX), rhEdge(100, BIO_TMAX, 25)) }
   ];
+
+  const byKey = {}; Z.forEach(z => byKey[z.key] = z);
+  const inside = (z, h) => pointInPoly(z.poly, h.t, h.w);
+  const inComfort = h => inside(byKey.comfort, h) || inside(byKey.permissible, h);
+  // an hour already inside zones 1–2 needs no strategy, whatever else overlaps it
+  const PASSIVE = ['permissible', 'humid', 'mass', 'evap', 'massnight', 'vent'];
+  Z.forEach(z => {
+    if (z.residual)  z.test = h => inside(z, h) && !PASSIVE.some(k => inside(byKey[k], h));
+    else if (z.excl) z.test = h => inside(z, h) && !inComfort(h);
+    else             z.test = h => inside(z, h);
+  });
+  Z.byKey = byKey;
+  return Z;
+}
+
+/** Ray-casting test of a point against a closed polygon of [t, w] vertices. */
+function pointInPoly(poly, x, y) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const xi = poly[i][0], yi = poly[i][1], xj = poly[j][0], yj = poly[j][1];
+    if ((yi > y) !== (yj > y) && x < (xj - xi) * (y - yi) / (yj - yi) + xi) c = !c;
+  }
+  return c;
 }
 
 /**
  * The exclusive categories, in the order they are escalated through. Every
  * value primaryNeed can return must appear here — the summary panel seeds its
- * counters from these keys.
+ * counters from these keys. Zone 8 (solar protection) is omitted: it applies to
+ * every warm hour alongside whatever else is done.
  */
 const PRIMARY_NAMES = {
-  comfort:'Already comfortable', gains:'Internal gains suffice', solar:'Passive solar heating',
-  vent:'Cross ventilation', fanvent:'Ventilation with fans', massnight:'Mass with night flush',
-  evap:'Evaporative cooling', dehum:'Dehumidification', humid:'Humidification',
-  heat:'Active heating', cool:'Active cooling'
+  comfort:'Comfort zone', permissible:'Permissible comfort zone', gains:'Heating by internal gains',
+  psolar:'Passive solar heating', asolar:'Active solar heating', heat:'Conventional heating',
+  humid:'Humidification', vent:'Natural and mechanical ventilation', mass:'Cooling by high thermal mass',
+  massnight:'High thermal mass with night ventilation', evap:'Evaporative cooling',
+  dehum:'Conventional dehumidification', ac:'Air conditioning'
 };
 
 /**
- * Exclusive assignment of an hour to the single most appropriate response.
- * On the warm side the order is the order of escalation: still air, then air
- * movement, then fans, then mass, then evaporation, then a machine.
+ * Exclusive assignment of an hour to a single zone. Cold hours are credited to
+ * the temperature band of Section 3.2–3.6; warm hours escalate from air movement,
+ * to mass, to mass flushed at night, to evaporation, to a machine.
  */
-function primaryNeed(h, Tlo, Thi, ventMax) {
-  const WLO = 0.004, WHI = 0.012, WVENT = 0.017;
-  const T_BREEZE = 28, T_VENT = Math.max(Thi, ventMax), T_FLUSH = 36;
-  if (h.t >= Tlo && h.t <= Thi && h.w >= WLO && h.w <= WHI && h.rh <= 80) return 'comfort';
-  if (h.t < Tlo) {
-    if (h.t >= Tlo - 7.2) return 'gains';
-    if (h.t >= Tlo - 12) return 'solar';
+function primaryNeed(h, Z) {
+  const B = Z.byKey, in_ = k => B[k].test(h);
+  if (in_('comfort')) return 'comfort';
+  if (in_('permissible')) return 'permissible';
+  if (h.t < 20) {
+    if (h.t >= 13.5) return 'gains';
+    if (h.t >= 7) return 'psolar';
+    if (h.t >= 1) return 'asolar';
     return 'heat';
   }
-  if (h.t > Thi) {
-    if (h.w <= WVENT && h.rh <= 80 && h.t <= T_BREEZE) return 'vent';
-    if (h.w <= WVENT && h.rh <= 80 && h.t <= T_VENT) return 'fanvent';
-    if (h.w <= WHI && h.range >= 10 && h.t <= T_FLUSH) return 'massnight';
-    if (h.twb <= 22 && h.w < WHI) return 'evap';
-    return 'cool';
-  }
-  if (h.w > WHI) return 'dehum';
-  if (h.w < WLO) return 'humid';
-  return 'comfort';
+  for (const k of ['humid', 'vent', 'mass', 'massnight', 'evap', 'dehum']) if (in_(k)) return k;
+  return h.rh > 80 ? 'dehum' : 'ac';
 }
 
 function buildPsychro(host, epw) {
   const p = epw.p0;
-  const S = { Tlo:20, Thi:27, ventMax:30, color:'density', m0:1, m1:12, h0:1, h1:24,
-              show:{ comfort:true, gains:true, solar:true, vent:true, fanvent:true, mass:false, massnight:true, evap:true, dehum:true, humid:false, heat:true },
+  const ZONES = bioZones(p);
+  const S = { color:'density', m0:1, m1:12, h0:1, h1:24,
+              show:{ comfort:true, permissible:true, gains:true, psolar:true, asolar:true, humid:true, heat:true, shade:false,
+                     mass:true, evap:true, massnight:true, vent:true, ac:true, dehum:true },
+              labels:true,
               rhLines:true, wbLines:true, enthLines:false };
 
   host.appendChild(el('div', { class:'pagehead' }, [
@@ -2656,48 +2896,34 @@ function buildPsychro(host, epw) {
     { value:'hour', label:'Time of day' }, { value:'ghi', label:'Solar radiation' }, { value:'none', label:'Plain' }
   ], S.color, v => { S.color = v; refresh(); }));
   ctrls.appendChild(el('div', { class:'divider' }));
-  const rTlo = rangeCtl('Comfort from', 16, 24, 0.5, S.Tlo, v => { S.Tlo = v; refresh(); }, v => v + ' °C');
-  const rThi = rangeCtl('to', 24, 32, 0.5, S.Thi, v => { S.Thi = v; refresh(); }, v => v + ' °C');
-  ctrls.appendChild(rTlo); ctrls.appendChild(rThi);
-  const cVent = selectCtl('Air movement limit', [
-    { value:'30', label:'30 °C — temperate occupants' },
-    { value:'32', label:'32 °C — hot climate, acclimatised' }
-  ], String(S.ventMax), v => { S.ventMax = +v; refresh(); }, 230);
-  ctrls.appendChild(cVent);
-  ctrls.appendChild(el('div', { class:'divider' }));
   const cM0 = selectCtl('From', monthOpts(), '1', v => { S.m0 = +v; refresh(); });
   const cM1 = selectCtl('to', monthOpts(), '12', v => { S.m1 = +v; refresh(); });
   const cH0 = selectCtl('Hours', hourOpts(), '1', v => { S.h0 = +v; refresh(); }, 150);
   const cH1 = selectCtl('to', hourOpts(), '24', v => { S.h1 = +v; refresh(); }, 150);
   [cM0, cM1, cH0, cH1].forEach(c => ctrls.appendChild(c));
   ctrls.appendChild(el('button', { class:'btn', text:'Whole year',
-    title:'Return to all 8 760 hours and the default comfort band',
+    title:'Return to all 8 760 hours',
     onclick: () => {
-      S.m0 = 1; S.m1 = 12; S.h0 = 1; S.h1 = 24; S.Tlo = 20; S.Thi = 27; S.ventMax = 30;
+      S.m0 = 1; S.m1 = 12; S.h0 = 1; S.h1 = 24;
       cM0.select.value = '1'; cM1.select.value = '12'; cH0.select.value = '1'; cH1.select.value = '24';
-      rTlo.range.value = 20; rTlo.out.textContent = '20 °C';
-      rThi.range.value = 27; rThi.out.textContent = '27 °C';
-      cVent.select.value = '30';
       refresh();
     }}));
   host.appendChild(ctrls);
 
   const ctrls2 = el('div', { class:'controls' });
   ctrls2.appendChild(el('span', { style:'font-size:11px;text-transform:uppercase;letter-spacing:.07em;color:var(--muted)', text:'Zones' }));
-  const zonesAll = bioZones(p, S.Tlo, S.Thi, S.ventMax);
-  zonesAll.forEach(z => ctrls2.appendChild(checkCtl(z.name, S.show[z.key], v => { S.show[z.key] = v; refresh(); })));
+  ZONES.forEach(z => ctrls2.appendChild(checkCtl(z.n + ' ' + t(z.name), S.show[z.key], v => { S.show[z.key] = v; refresh(); })));
+  ctrls2.appendChild(checkCtl('Zone numbers', true, v => { S.labels = v; refresh(); }));
   ctrls2.appendChild(el('div', { class:'divider' }));
   ctrls2.appendChild(checkCtl('Relative humidity lines', true, v => { S.rhLines = v; refresh(); }));
   ctrls2.appendChild(checkCtl('Wet-bulb lines', true, v => { S.wbLines = v; refresh(); }));
   ctrls2.appendChild(checkCtl('Enthalpy lines', false, v => { S.enthLines = v; refresh(); }));
   host.appendChild(ctrls2);
   host.appendChild(el('p', { class:'hint', html:
-      '<b>The warm-side thresholds are absolute, not relative to the comfort band.</b> Unassisted cross ventilation stops compensating '
-    + 'for the heat at about <b>28 °C</b> (Lapithis, 2018). Elevated air speed of 1.5–2.0 m/s — a ceiling fan, not a breeze — extends '
-    + 'that to <b>30 °C</b> for temperate occupants and <b>32 °C</b> where people are acclimatised to a hot climate (Givoni, 1992); the '
-    + 'selector above chooses between the two. Beyond that the strategy has to change in kind rather than in degree: the building is '
-    + 'sealed by day and its mass flushed at night (Lechner, 2015). Moving the comfort sliders shifts the comfort zone, but it does not '
-    + 'move these limits, because the physiology does not move with them.' }));
+      '<b>Zones after Manzano-Agugliaro et al. (2015, Fig. 1), adapted from Givoni.</b> Each boundary is drawn from the dry-bulb and '
+    + 'relative-humidity intersections given in Section 3 of that review: limits stated as a range of relative humidity follow the RH '
+    + 'curves, and the dotted lines joining two intersections are straight. The zones are fixed by the source and do not move with the '
+    + 'site. Zones overlap; an hour already inside zones 1 or 2 is not counted towards any cooling or humidification strategy.' }));
 
   const layout = el('div', { class:'grid psychro-layout' });
   host.appendChild(layout);
@@ -2712,7 +2938,7 @@ function buildPsychro(host, epw) {
       const rows = [['Month','Day','Hour','Dry bulb (°C)','Humidity ratio (g/kg)','Relative humidity (%)','Wet bulb (°C)','Enthalpy (kJ/kg)','Primary need']];
       for (const i of cur()) {
         const h = hourProps(i); if (!h) continue;
-        rows.push([epw.month[i], epw.day[i], epw.hour[i], fmt(h.t,1), fmt(h.w*1000,2), fmt(h.rh,0), fmt(h.twb,1), fmt(enthalpy(h.t,h.w),1), primaryNeed(h, S.Tlo, S.Thi, S.ventMax)]);
+        rows.push([epw.month[i], epw.day[i], epw.hour[i], fmt(h.t,1), fmt(h.w*1000,2), fmt(h.rh,0), fmt(h.twb,1), fmt(enthalpy(h.t,h.w),1), t(PRIMARY_NAMES[primaryNeed(h, ZONES)])]);
       }
       return csvHeader([['Chart','Psychrometric data'],['Pressure (Pa)', p.toFixed(0)]]) + csvRows(rows);
     },
@@ -2726,7 +2952,7 @@ function buildPsychro(host, epw) {
       if (w > ws) return '<span class="tm">Above saturation — this state cannot exist</span>';
       const rh = rhFromW(t, w, p);
       const twb = twbFromW(t, w, p);
-      const zs = bioZones(p, S.Tlo, S.Thi, S.ventMax).filter(z => S.show[z.key] && t >= z.t0 && t <= z.t1 && w >= z.bot(t) && w <= z.top(t));
+      const zs = ZONES.filter(z => S.show[z.key] && z.test({ t, w, rh }));
       // nearest recorded hour, for context
       let best = -1, bd = Infinity;
       for (const i of chart.data.idx) {
@@ -2739,7 +2965,7 @@ function buildPsychro(host, epw) {
         + '<span class="tm">Relative humidity</span> <span class="tv">' + fmt(rh,0) + ' %</span><br>'
         + '<span class="tm">Wet bulb</span> <span class="tv">' + fmt(twb,1) + ' °C</span>'
         + ' · <span class="tm">enthalpy</span> <span class="tv">' + fmt(enthalpy(t,w),1) + ' kJ/kg</span>';
-      if (zs.length) s += '<br><span class="tm">Zone:</span> ' + zs.map(z => z.name).join(', ');
+      if (zs.length) s += '<br><span class="tm">Zone:</span> ' + zs.map(z => z.n + ' ' + t(z.name)).join(', ');
       if (best >= 0 && bd < 4) s += '<br><span class="tm">Nearest record: ' + epw.day[best] + ' ' + MON3[epw.month[best]-1]
         + ', ' + String(epw.hour[best]-1).padStart(2,'0') + ':00</span>';
       return s;
@@ -2761,9 +2987,9 @@ function buildPsychro(host, epw) {
     for (const i of idx) { const h = hourProps(i); if (!h) continue; props[i] = h;
       if (h.t < tmin) tmin = h.t; if (h.t > tmax) tmax = h.t; if (h.w > wmax) wmax = h.w; }
     if (!isFinite(tmin)) { label(ctx, 'No usable hours in this selection.', 20, 30, CH.muted, F(12)); return; }
-    const T0 = Math.min(Math.floor((tmin - 3) / 5) * 5, S.Tlo - 15);
-    const T1 = Math.max(Math.ceil((tmax + 3) / 5) * 5, S.Thi + 12);
-    const WM = Math.max(0.020, Math.ceil((wmax * 1000 + 3) / 5) * 5 / 1000);
+    const T0 = Math.min(Math.floor((tmin - 3) / 5) * 5, -5);
+    const T1 = Math.max(Math.ceil((tmax + 3) / 5) * 5, 45);
+    const WM = Math.max(0.025, Math.ceil((wmax * 1000 + 3) / 5) * 5 / 1000);
 
     const P = plotRect(46, 18, W - 118, H - 52, T0, T1, 0, WM);
     chart.data = { P, idx, props };
@@ -2789,19 +3015,27 @@ function buildPsychro(host, epw) {
     ctx.clip(satPath);
 
     // --- zones -----------------------------------------------------------
-    const zones = bioZones(p, S.Tlo, S.Thi, S.ventMax);
-    zones.forEach(z => {
+    // Zone 13 is what is left once the passive zones are taken out, so it is
+    // painted on its own layer and the other polygons are cut from it.
+    const zPath = z => { const q = new Path2D(); z.poly.forEach((v, k) => { const X = P.sx(v[0]), Y = P.sy(v[1]); k ? q.lineTo(X, Y) : q.moveTo(X, Y); }); q.closePath(); return q; };
+    ZONES.slice().sort((a, b) => a.draw - b.draw).forEach(z => {
       if (!S.show[z.key]) return;
-      const pts = [];
-      const N = 60;
-      for (let k = 0; k <= N; k++) { const t = lerp(z.t0, z.t1, k / N); pts.push([t, Math.max(0, Math.min(z.bot(t), WM))]); }
-      for (let k = N; k >= 0; k--) { const t = lerp(z.t0, z.t1, k / N); pts.push([t, Math.max(0, Math.min(z.top(t), WM))]); }
-      ctx.beginPath();
-      pts.forEach((q, k) => { const X = P.sx(q[0]), Y = P.sy(q[1]); k ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); });
-      ctx.closePath();
-      ctx.fillStyle = hexA(z.color, z.alpha !== undefined ? z.alpha : z.key === 'comfort' ? 0.20 : 0.10); ctx.fill();
-      stroke(ctx, hexA(z.color, 0.75), z.key === 'comfort' ? 1.6 : 1.1, z.key === 'comfort' ? [] : [5,3]);
-      ctx.stroke();
+      const path = zPath(z);
+      const fill = hexA(z.color, z.alpha !== undefined ? z.alpha : 0.10);
+      const solid = z.key === 'comfort' || z.key === 'permissible';
+      if (z.residual) {
+        const off = document.createElement('canvas');
+        off.width = ctx.canvas.width; off.height = ctx.canvas.height;
+        const o = off.getContext('2d'); o.setTransform(ctx.getTransform());
+        o.fillStyle = fill; o.fill(path);
+        o.globalCompositeOperation = 'destination-out'; o.fillStyle = '#000';
+        ['permissible', 'humid', 'mass', 'evap', 'massnight', 'vent'].forEach(k => o.fill(zPath(ZONES.byKey[k])));
+        ctx.save(); ctx.setTransform(1, 0, 0, 1, 0, 0); ctx.drawImage(off, 0, 0); ctx.restore();
+        return;
+      }
+      ctx.fillStyle = fill; ctx.fill(path);
+      stroke(ctx, hexA(z.color, 0.85), solid ? 1.6 : 1.3, solid ? [] : [5,3]);
+      ctx.stroke(path);
     });
 
     // --- the data --------------------------------------------------------
@@ -2889,6 +3123,18 @@ function buildPsychro(host, epw) {
       }
     }
 
+    // --- zone numbers, as in the source figure ---------------------------
+    if (S.labels) ZONES.forEach(z => {
+      if (!S.show[z.key] || !z.lab) return;
+      const tt = z.lab[0], ww = z.lab[1] < 1 ? z.lab[1] : wFromRH(tt, z.lab[1], p);
+      if (tt < T0 + 1 || tt > T1 - 1 || ww > WM * 0.97) return;
+      const X = P.sx(tt), Y = P.sy(ww);
+      ctx.setLineDash([]);
+      ctx.fillStyle = 'rgba(255,255,255,.92)'; ctx.beginPath(); ctx.arc(X, Y, 8, 0, 7); ctx.fill();
+      ctx.lineWidth = 1.4; ctx.strokeStyle = z.color; ctx.stroke();
+      label(ctx, String(z.n), X, Y + 0.5, z.color, F(10, '700'), 'center', 'middle');
+    });
+
     // --- axes -------------------------------------------------------------
     stroke(ctx, CH.line, 1);
     seg(ctx, P.x, px(P.y + P.h), P.x + P.w, px(P.y + P.h));
@@ -2920,7 +3166,7 @@ function buildPsychro(host, epw) {
   function renderSide() {
     sideBox.innerHTML = '';
     const idx = cur();
-    const zones = bioZones(p, S.Tlo, S.Thi, S.ventMax);
+    const zones = ZONES;
     const counts = {}; zones.forEach(z => counts[z.key] = 0);
     // The exclusive categories are seeded from PRIMARY_NAMES, so a category can
     // never be counted into an undefined slot if one is added later.
@@ -2929,7 +3175,7 @@ function buildPsychro(host, epw) {
     for (const i of idx) {
       const h = hourProps(i); if (!h) continue; n++;
       zones.forEach(z => { if (z.test(h)) counts[z.key]++; });
-      const k = primaryNeed(h, S.Tlo, S.Thi, S.ventMax);
+      const k = primaryNeed(h, ZONES);
       if (prim[k] === undefined) prim[k] = 0;
       prim[k]++;
     }
@@ -2946,7 +3192,7 @@ function buildPsychro(host, epw) {
       const v = pc(counts[z.key]);
       list.appendChild(el('div', { class:'strow', title:z.short }, [
         el('span', { class:'swatch', style:'background:' + hexA(z.color, .55) + ';box-shadow:0 0 0 1px ' + z.color + ' inset' }),
-        el('span', { class:'nm', text:z.name }),
+        el('span', { class:'nm', text:z.n + ' ' + t(z.name) }),
         el('span', { class:'bar' }, [ el('i', { style:'width:' + clamp(v,0,100).toFixed(2) + '%;background:' + z.color }) ]),
         el('span', { class:'pc', text:fmt(v,1) + ' %' })
       ]));
@@ -2959,9 +3205,7 @@ function buildPsychro(host, epw) {
     const NAMES = PRIMARY_NAMES;
     // heat and cool keep the same colours here as in the zone list above, so the
     // two panels can be read against each other
-    const COLS = { comfort:'#65A30D', gains:'#D97706', solar:'#DC2626', vent:'#0891B2', fanvent:'#3B82F6',
-                   massnight:'#2563EB', evap:'#0D9488', dehum:'#DB2777', humid:'#a8afb5',
-                   heat:'#334155', cool:'#78350F' };
+    const COLS = {}; ZONES.forEach(z => COLS[z.key] = z.color);
     const box2 = el('div', { class:'panel', style:'margin-top:16px' });
     box2.appendChild(el('div', { class:'panel-head' }, [ el('div', { class:'panel-title' }, [
       el('h3', { text:'The year divided once' }),
@@ -2979,18 +3223,17 @@ function buildPsychro(host, epw) {
       if (!prim[k]) return;
       l2.appendChild(el('div', { class:'strow' }, [
         el('span', { class:'swatch', style:'background:' + COLS[k] }),
-        el('span', { class:'nm', text:NAMES[k] }),
+        el('span', { class:'nm', text:ZONES.byKey[k].n + ' ' + t(NAMES[k]) }),
         el('span', { class:'bar' }, [ el('i', { style:'width:' + pc(prim[k]).toFixed(2) + '%;background:' + COLS[k] }) ]),
         el('span', { class:'pc', text:fmt(pc(prim[k]),1) + ' %' })
       ]));
     });
     b2.appendChild(l2);
-    b2.appendChild(el('p', { class:'hint', html:'<b>Reading this.</b> The warm-side categories are ranked by escalation, so each hour is '
-      + 'credited to the least equipment that would serve it. A large “already comfortable” share means the envelope’s job is mainly to '
-      + 'not spoil what is outside. A large cross-ventilation share argues for openable façades on opposite sides of the plan; if the '
-      + 'share only appears once fans are allowed, the design depends on air movement being delivered, not merely on windows opening. '
-      + 'A large night-flush share points to exposed mass and a secure way of leaving the building open after dark. Evaporative cooling '
-      + 'only appears in dry climates. Dehumidification and active cooling are what no passive measure will remove.' }));
+    b2.appendChild(el('p', { class:'hint', html:'<b>Reading this.</b> Cold hours are credited to the heating band of their '
+      + 'temperature (zones 3, 4, 5 and 7). Warm hours are credited to the first zone that serves them in order of escalation: '
+      + 'humidification, ventilation, thermal mass, thermal mass with night ventilation, evaporative cooling, dehumidification and, '
+      + 'finally, air conditioning. Solar protection (zone 8) is not listed, because the source applies it to every hour above 20 °C '
+      + 'in addition to whichever strategy is chosen.' }));
     box2.appendChild(b2);
     sideBox.appendChild(box2);
   }
@@ -3218,199 +3461,6 @@ function buildSun(host, epw) {
            + (ss ? '<br><span class="tm">Sun up ' + hhmm(ss.rise) + ' – ' + hhmm(ss.set) + ' (' + fmt(ss.set - ss.rise,1) + ' h)</span>' : '');
     }
   });
-
-  /* --- diurnal radiation and clearness ----------------------------------- */
-  host.appendChild(sectionHead('Radiation through the day', 'The mean day of each month, and how much of the possible sunlight actually arrives'));
-  const g2 = el('div', { class:'grid g2' }); host.appendChild(g2);
-
-  /** Grid geometry for the twelve radiation panels, shared by render and hover. */
-  function radLayout(W, H) {
-    const cols = W > 1080 ? 6 : W > 700 ? 4 : 3, rows = Math.ceil(12 / cols);
-    const padL = 48, padT = W > 560 ? 34 : 48, padB = 34, gapX = 14, gapY = 26;   // the key wraps to two rows when narrow
-    const cw = (W - padL - 14 - gapX * (cols - 1)) / cols;
-    const chh = (H - padT - padB - gapY * (rows - 1)) / rows;
-    return { cols, rows, padL, padT, padB, gapX, gapY, cw, chh };
-  }
-  const radCell = (L, m, dom) => {
-    const c = m % L.cols, r = Math.floor(m / L.cols);
-    return plotRect(L.padL + c * (L.cw + L.gapX), L.padT + r * (L.chh + L.gapY) + 12, L.cw, L.chh - 12, 0, 24, 0, dom);
-  };
-
-  makePanel(g2, {
-    title:'The average day, month by month',
-    note:'Twelve average days on one shared scale. The filled curve is what a horizontal surface — a roof, a skylight, the ground — '
-       + 'actually receives. The solid red line is the beam measured square-on to the sun: this is the radiation a shading device has to '
-       + 'intercept, and it stays high even in winter when the horizontal figure has collapsed. The dashed line is the diffuse light from '
-       + 'the sky alone, which is all that a north façade, or any façade under overcast sky, ever gets. Read the width of each curve for '
-       + 'the length of the day and the height for the intensity.',
-    heightFn: W => {
-      const cols = W > 1080 ? 6 : W > 700 ? 4 : 3, rows = Math.ceil(12 / cols);
-      const cellH = clamp((W - 62) / cols * 0.62, 74, 130);
-      return (W > 560 ? 34 : 48) + rows * (cellH + 12) + (rows - 1) * 26 + 34;
-    },
-    csv: () => {
-      const rows = [['Month','Hour','Global horizontal (W/m²)','Direct normal (W/m²)','Diffuse horizontal (W/m²)']];
-      const d = radDiurnal();
-      for (let m = 0; m < 12; m++) for (let h = 0; h < 24; h++)
-        rows.push([MONTHS[m], h, fmt(d.ghi[m][h],1), fmt(d.dni[m][h],1), fmt(d.dhi[m][h],1)]);
-      return csvHeader([['Chart','Mean hourly radiation by month']]) + csvRows(rows);
-    },
-    render(ctx, W, H) {
-      const d = radDiurnal();
-      let mx = 0; ['ghi','dni','dhi'].forEach(k => d[k].forEach(r => r.forEach(v => { if (v > mx) mx = v; })));
-      const dom = niceDomain(0, mx, 4, 0.04)[1];
-      const L = radLayout(W, H);
-      for (let m = 0; m < 12; m++) {
-        const P = radCell(L, m, dom);
-        drawAxes(ctx, P, { yCount:3, xTicks:[0,6,12,18], yLabels:(m % L.cols) === 0,
-                           xFmt:v => String(v).padStart(2,'0'), xLabels:m >= 12 - L.cols });
-        // global horizontal, as a filled area
-        ctx.beginPath(); ctx.moveTo(P.sx(0), P.sy(0));
-        for (let h = 0; h < 24; h++) ctx.lineTo(P.sx(h + 0.5), P.sy(d.ghi[m][h]));
-        ctx.lineTo(P.sx(24), P.sy(0)); ctx.closePath();
-        ctx.fillStyle = hexA(CAT[3], 0.20); ctx.fill();
-        const line = (key, color, width, dash) => {
-          stroke(ctx, color, width, dash); ctx.beginPath();
-          for (let h = 0; h < 24; h++) { const X = P.sx(h + 0.5), Y = P.sy(d[key][m][h]); h ? ctx.lineTo(X, Y) : ctx.moveTo(X, Y); }
-          ctx.stroke(); ctx.setLineDash([]);
-        };
-        line('ghi', CAT[3], 1.9);
-        line('dni', CAT[1], 1.9);
-        line('dhi', CAT[7], 1.5, [4,3]);
-        label(ctx, MONTHS[m], P.x, P.y - 5, CH.ink, F(10.5,'600'), 'left', 'alphabetic');
-      }
-      const keyCols = W > 560 ? 3 : 2;
-      swatchKey(ctx, L.padL, 6, [
-        { color:hexA(CAT[3], 0.45), label:'Global horizontal' },
-        { color:CAT[1], label:'Direct normal' },
-        { color:CAT[7], label:'Diffuse (sky only)' }
-      ], { cols:keyCols, colWidth:(W - L.padL - 14) / keyCols, rowHeight:14 });
-      ctx.save(); ctx.translate(13, H / 2); ctx.rotate(-Math.PI/2);
-      label(ctx, 'Mean irradiance (W/m²)', 0, 0, CH.ink2, F(10.5,'600'), 'center', 'middle'); ctx.restore();
-      label(ctx, 'Hour of day', W / 2, H - 6, CH.ink2, F(10.5,'600'), 'center', 'middle');
-    },
-    hit(x, y, P) {
-      const d = radDiurnal();
-      let mx = 0; ['ghi','dni','dhi'].forEach(k => d[k].forEach(r => r.forEach(v => { if (v > mx) mx = v; })));
-      const dom = niceDomain(0, mx, 4, 0.04)[1];
-      const L = radLayout(P.W, P.H);
-      for (let m = 0; m < 12; m++) {
-        const R = radCell(L, m, dom);
-        if (x < R.x || x > R.x + R.w || y < R.y || y > R.y + R.h) continue;
-        const h = clamp(Math.floor(R.ix(x)), 0, 23);
-        return '<b>' + MONTHS[m] + ', ' + String(h).padStart(2,'0') + ':00–' + String(h+1).padStart(2,'0') + ':00</b>'
-             + '<br><span class="tm">Global horizontal</span> <span class="tv">' + fmt(d.ghi[m][h],0) + ' W/m²</span>'
-             + '<br><span class="tm">Direct normal</span> <span class="tv">' + fmt(d.dni[m][h],0) + ' W/m²</span>'
-             + '<br><span class="tm">Diffuse horizontal</span> <span class="tv">' + fmt(d.dhi[m][h],0) + ' W/m²</span>';
-      }
-      return null;
-    }
-  });
-
-  let radCache = null;
-  function radDiurnal() {
-    if (radCache) return radCache;
-    const mk = () => Array.from({ length:12 }, () => new Array(24).fill(0));
-    const ghi = mk(), dni = mk(), dhi = mk(), cnt = mk();
-    for (let i = 0; i < epw.n; i++) {
-      const m = epw.month[i] - 1, h = epw.hour[i] - 1;
-      if (isFinite(epw.data.ghi[i])) ghi[m][h] += epw.data.ghi[i];
-      if (isFinite(epw.data.dni[i])) dni[m][h] += epw.data.dni[i];
-      if (isFinite(epw.data.dhi[i])) dhi[m][h] += epw.data.dhi[i];
-      cnt[m][h]++;
-    }
-    for (let m = 0; m < 12; m++) for (let h = 0; h < 24; h++) {
-      const c = cnt[m][h] || 1; ghi[m][h] /= c; dni[m][h] /= c; dhi[m][h] /= c;
-    }
-    return (radCache = { ghi, dni, dhi });
-  }
-
-  makePanel(g2, {
-    title:'Sky clearness and daylight',
-    note:'The clearness index, written Kt, is the share of the radiation available just above the atmosphere that actually reaches the '
-       + 'ground. A value near 0.75 is a cloudless desert sky; near 0.30 is persistent overcast. It is the single number that says how '
-       + 'much this site is clouded, and therefore how much a direct-gain or daylighting strategy can be relied upon. Below it, the number '
-       + 'of hours in an average day on which a horizontal surface outdoors is brighter than 10 000 and 20 000 lux — thresholds well above '
-       + 'what any interior needs, so they measure the resource available to be let in.',
-    aspect:1.5,
-    csv: () => {
-      const k = clearness();
-      const rows = [['Month','Clearness index Kt (–)','Mean hours per day above 10 000 lux','Mean hours per day above 20 000 lux']];
-      for (let m = 0; m < 12; m++) rows.push([MONTHS[m], fmt(k.kt[m],3), fmt(k.h10[m],1), fmt(k.h20[m],1)]);
-      return csvHeader([['Chart','Sky clearness and daylight'],['Illuminance','Global horizontal, lux']]) + csvRows(rows);
-    },
-    render(ctx, W, H) {
-      const k = clearness();
-      const topCap = 16, midGap = 40, botPad = 24;
-      const hh = (H - topCap - midGap - botPad) / 2;
-      const bwOf = P => P.w / 12;
-
-      label(ctx, 'Clearness index Kt — share of the available radiation reaching the ground',
-            14, topCap - 6, CH.ink2, F(10,'600'), 'left', 'middle');
-      const P1 = plotRect(46, topCap + 4, W - 60, hh, 0.5, 12.5, 0, 1);
-      drawAxes(ctx, P1, { xLabels:false, yCount:4 });
-      let bw = bwOf(P1);
-      for (let m = 0; m < 12; m++) {
-        ctx.fillStyle = RAMPS.solar.css(0.15 + 0.75 * clamp(k.kt[m] / 0.75, 0, 1));
-        roundTopRect(ctx, P1.sx(m+1) - bw*0.32, P1.sy(k.kt[m]), bw*0.64, P1.sy(0) - P1.sy(k.kt[m]), 3);
-        label(ctx, fmt(k.kt[m],2), P1.sx(m+1), P1.sy(k.kt[m]) - 7, CH.muted, FM(9), 'center', 'middle');
-      }
-
-      const y2 = topCap + 4 + hh + midGap;
-      // caption and key share one line; the key is placed after the measured
-      // caption width so the two can never run into each other
-      const cap2 = 'Daylight — hours per day above:';
-      label(ctx, cap2, 14, y2 - 22, CH.ink2, F(10,'600'), 'left', 'middle');
-      ctx.font = F(10,'600');
-      const keyX = 14 + ctx.measureText(cap2).width + 14;
-      const keyW = Math.max(78, Math.min(104, (W - keyX - 14) / 2));
-      const P2 = plotRect(46, y2, W - 60, hh, 0.5, 12.5, 0, Math.max(12, Math.ceil(Math.max.apply(null, k.h10))));
-      drawAxes(ctx, P2, { xLabels:false, yCount:4 });
-      bw = bwOf(P2);
-      for (let m = 0; m < 12; m++) {
-        ctx.fillStyle = hexA(CAT[7], .30);
-        roundTopRect(ctx, P2.sx(m+1) - bw*0.32, P2.sy(k.h10[m]), bw*0.64, P2.sy(0) - P2.sy(k.h10[m]), 3);
-        ctx.fillStyle = CAT[7];
-        roundTopRect(ctx, P2.sx(m+1) - bw*0.32, P2.sy(k.h20[m]), bw*0.64, P2.sy(0) - P2.sy(k.h20[m]), 3);
-        label(ctx, MON3[m], P2.sx(m+1), P2.y + P2.h + 13, CH.muted, F(10), 'center', 'middle');
-      }
-      swatchKey(ctx, keyX, y2 - 27, [
-        { color:hexA(CAT[7], .30), label:'10 000 lux' }, { color:CAT[7], label:'20 000 lux' }
-      ], { cols:2, colWidth:keyW, rowHeight:14 });
-    },
-    hit(x, y, P) {
-      const k = clearness();
-      const topCap = 16, midGap = 40, botPad = 24;
-      const hh = (P.H - topCap - midGap - botPad) / 2;
-      const R1 = plotRect(46, topCap + 4, P.W - 60, hh, 0.5, 12.5, 0, 1);
-      const R2 = plotRect(46, topCap + 4 + hh + midGap, P.W - 60, hh, 0.5, 12.5, 0, 1);
-      const R = (y >= R1.y && y <= R1.y + R1.h) ? R1 : (y >= R2.y && y <= R2.y + R2.h) ? R2 : null;
-      if (!R || x < R.x || x > R.x + R.w) return null;
-      const m = clamp(Math.round(R.ix(x)) - 1, 0, 11);
-      return '<b>' + MONTHS[m] + '</b>'
-           + '<br><span class="tm">Clearness index Kt</span> <span class="tv">' + fmt(k.kt[m],2) + '</span>'
-           + '<br><span class="tm">Above 10 000 lux</span> <span class="tv">' + fmt(k.h10[m],1) + ' h/day</span>'
-           + '<br><span class="tm">Above 20 000 lux</span> <span class="tv">' + fmt(k.h20[m],1) + ' h/day</span>';
-    }
-  });
-
-  let clearCache = null;
-  function clearness() {
-    if (clearCache) return clearCache;
-    const kt = new Array(12).fill(0), h10 = new Array(12).fill(0), h20 = new Array(12).fill(0);
-    const g = new Array(12).fill(0), e = new Array(12).fill(0), days = new Array(12).fill(0);
-    let day = 0;
-    for (let m = 0; m < 12; m++) days[m] = epw.monthDays[m];
-    for (let i = 0; i < epw.n; i++) {
-      const m = epw.month[i] - 1;
-      if (isFinite(epw.data.ghi[i])) g[m] += epw.data.ghi[i];
-      if (isFinite(epw.data.ethor[i])) e[m] += epw.data.ethor[i];
-      const lx = epw.data.gh_il[i];
-      if (isFinite(lx)) { if (lx >= 10000) h10[m]++; if (lx >= 20000) h20[m]++; }
-    }
-    for (let m = 0; m < 12; m++) { kt[m] = e[m] > 0 ? g[m] / e[m] : NaN; h10[m] /= days[m]; h20[m] /= days[m]; }
-    return (clearCache = { kt, h10, h20 });
-  }
 }
 const hhmm = t => { const h = Math.floor(t), m = Math.round((t - h) * 60); return String(h).padStart(2,'0') + ':' + String(m % 60).padStart(2,'0'); };
 
@@ -4354,10 +4404,11 @@ Object.assign(PT, {
 'Large — thermal mass is effective':'Grande — a massa térmica é eficaz',
 'Moderate':'Moderada', 'Small — night cooling is limited':'Pequena — o arrefecimento nocturno é limitado',
 'The shape of the year':'A forma do ano',
-'Monthly envelopes built from the {} hourly records':'Envolventes mensais construídas a partir dos {} registos horários',
-'Monthly temperature envelope':'Envolvente mensal de temperatura',
-'Absolute range':'Intervalo absoluto', 'Mean daily range':'Amplitude diária média',
-'Monthly solar radiation':'Radiação solar mensal',
+'Daily envelope for the whole year, or hourly detail for the days you select below':'Envolvente diária para o ano inteiro, ou detalhe horário para os dias que seleccionar abaixo',
+'Temperature through the year':'Temperatura ao longo do ano',
+'Shaded band: daily minimum to maximum. Line: daily mean. Drag the strip below to zoom into hourly detail for a shorter span.':
+  'Faixa sombreada: mínima a máxima diária. Linha: média diária. Arraste a faixa abaixo para ampliar o detalhe horário de um intervalo mais curto.',
+'Daily min – max':'Mín. – máx. diária', 'Daily mean':'Média diária',
 'Below and around the building':'Sob e em redor do edifício',
 'Undisturbed ground temperatures and the sky the envelope sees':'Temperaturas do solo não perturbado e o céu que a envolvente vê',
 'Undisturbed ground temperature':'Temperatura do solo não perturbado',
@@ -4403,6 +4454,28 @@ Object.assign(PT, {
 'Wind speed distribution':'Distribuição da velocidade do vento',
 'Wind speed through the year':'Velocidade do vento ao longo do ano',
 'Mean and peak hourly wind speed by month, for the selected hours of the day.':'Velocidade horária média e de pico por mês, para as horas do dia seleccionadas.',
+'Beaufort scale':'Escala de Beaufort',
+'The wind force scale as codified by the World Meteorological Organization, in metres per second':'A escala de força do vento codificada pela Organização Meteorológica Mundial, em metros por segundo',
+'Force':'Força', 'Description':'Descrição', 'Effects on land':'Efeitos em terra',
+'Calm':'Calmo', 'Light air':'Aragem', 'Light breeze':'Brisa leve', 'Gentle breeze':'Brisa fraca',
+'Moderate breeze':'Brisa moderada', 'Fresh breeze':'Brisa fresca', 'Strong breeze':'Brisa forte',
+'Near gale':'Vento forte', 'Gale':'Ventania', 'Strong gale':'Ventania forte', 'Storm':'Tempestade',
+'Violent storm':'Tempestade violenta', 'Hurricane':'Furacão',
+'Smoke rises vertically':'O fumo sobe verticalmente',
+'Wind motion visible in smoke, not in wind vanes':'Movimento do vento visível no fumo, não nos cata-ventos',
+'Wind felt on the face; leaves rustle':'Vento sentido no rosto; as folhas fazem ruído',
+'Leaves and small twigs in constant motion':'Folhas e pequenos ramos em movimento constante',
+'Raises dust and loose paper; small branches move':'Levanta poeira e papéis soltos; pequenos ramos movem-se',
+'Small trees in leaf begin to sway':'Árvores pequenas com folhagem começam a oscilar',
+'Large branches in motion; umbrellas used with difficulty':'Ramos grandes em movimento; guarda-chuvas usados com dificuldade',
+'Whole trees in motion; walking against the wind is an effort':'Árvores inteiras em movimento; caminhar contra o vento exige esforço',
+'Twigs break off trees; walking is generally impeded':'Pequenos ramos partem-se das árvores; caminhar é geralmente dificultado',
+'Slight structural damage — chimney pots and roof slates may lift':'Danos estruturais ligeiros — chaminés e telhas podem levantar-se',
+'Trees uprooted; considerable structural damage':'Árvores arrancadas; danos estruturais consideráveis',
+'Widespread damage':'Danos generalizados',
+'Devastation':'Devastação',
+'World Meteorological Organization scale, 10-minute mean wind speed at 10 m height. Source: Met Office and Royal Meteorological Society.':
+  'Escala da Organização Meteorológica Mundial, velocidade média do vento a 10 minutos, a 10 m de altura. Fonte: Met Office e Royal Meteorological Society.',
 
 /* --- psicrometria -------------------------------------------------------- */
 'Psychrometric chart':'Diagrama psicrométrico',
@@ -4438,18 +4511,35 @@ Object.assign(PT, {
 'Ventilation with fans':'Ventilação com ventoinhas', 'Mass with night flush':'Massa com lavagem nocturna',
 'Evaporative cooling':'Arrefecimento evaporativo', 'Dehumidification':'Desumidificação',
 'Humidification':'Humidificação', 'Active heating':'Aquecimento activo', 'Active cooling':'Arrefecimento activo',
+'Permissible comfort zone':'Zona de conforto admissível', 'Heating by internal gains':'Aquecimento por ganhos internos',
+'Active solar heating':'Aquecimento solar activo', 'Conventional heating':'Aquecimento convencional',
+'Solar protection':'Protecção solar', 'Cooling by high thermal mass':'Arrefecimento por massa térmica elevada',
+'High thermal mass with night ventilation':'Massa térmica elevada com ventilação nocturna',
+'Natural and mechanical ventilation':'Ventilação natural e mecânica', 'Air conditioning':'Ar condicionado',
+'Conventional dehumidification':'Desumidificação convencional', 'Zone numbers':'Números das zonas',
+'Return to all {} hours':'Voltar às {} horas',
+'{}–{} °C, {}–{} % RH. No system required':'{}–{} °C, {}–{} % HR. Não exige qualquer sistema',
+'{}–{} °C, {}–{} % RH, cut by the line {} °C / {} % – {} °C / {} %':'{}–{} °C, {}–{} % HR, cortada pela linha {} °C / {} % – {} °C / {} %',
+'{}–{} °C. Occupants, lighting and equipment':'{}–{} °C. Ocupantes, iluminação e equipamento',
+'{}–{} °C. Glazing, sunspaces and Trombe walls with mass':'{}–{} °C. Envidraçados, estufas e paredes de Trombe com massa',
+'{}–{} °C. Solar collectors feeding radiant floors or radiators':'{}–{} °C. Colectores solares a alimentar pavimentos radiantes ou radiadores',
+'Up to {} °C, below {} % RH at {} °C. Vegetation, water surfaces':'Até {} °C, abaixo de {} % HR a {} °C. Vegetação, superfícies de água',
+'Below {} °C (the source chart starts at −{} °C)':'Abaixo de {} °C (o diagrama de origem começa em −{} °C)',
+'From {} °C upwards. Shading of openings and envelope':'A partir de {} °C. Sombreamento de vãos e envolvente',
+'{}–{} °C, below the line {} °C / {} % – {} °C / {} %':'{}–{} °C, abaixo da linha {} °C / {} % – {} °C / {} %',
+'{}–{} °C, below {} °C / {} % – {} °C / {} % – {} °C / {} %':'{}–{} °C, abaixo de {} °C / {} % – {} °C / {} % – {} °C / {} %',
+'Warm hours below {} % RH that no passive zone reaches':'Horas quentes abaixo de {} % HR que nenhuma zona passiva alcança',
+'Above {} °C and above {} % RH':'Acima de {} °C e acima de {} % HR',
+'<b>Zones after Manzano-Agugliaro et al. ({}, Fig. {}), adapted from Givoni.</b> Each boundary is drawn from the dry-bulb and relative-humidity intersections given in Section {} of that review: limits stated as a range of relative humidity follow the RH curves, and the dotted lines joining two intersections are straight. The zones are fixed by the source and do not move with the site. Zones overlap; an hour already inside zones {} or {} is not counted towards any cooling or humidification strategy.':
+ '<b>Zonas segundo Manzano-Agugliaro et al. ({}, Fig. {}), adaptadas de Givoni.</b> Cada limite é traçado a partir das intersecções de temperatura de bolbo seco e humidade relativa indicadas na secção {} dessa revisão: os limites dados como intervalo de humidade relativa seguem as curvas de HR, e as linhas tracejadas que unem duas intersecções são rectas. As zonas são fixadas pela fonte e não se deslocam com o local. As zonas sobrepõem-se; uma hora já situada nas zonas {} ou {} não é contabilizada em nenhuma estratégia de arrefecimento ou humidificação.',
+'<b>Reading this.</b> Cold hours are credited to the heating band of their temperature (zones {}, {}, {} and {}). Warm hours are credited to the first zone that serves them in order of escalation: humidification, ventilation, thermal mass, thermal mass with night ventilation, evaporative cooling, dehumidification and, finally, air conditioning. Solar protection (zone {}) is not listed, because the source applies it to every hour above {} °C in addition to whichever strategy is chosen.':
+ '<b>Como ler.</b> As horas frias são atribuídas à faixa de aquecimento da sua temperatura (zonas {}, {}, {} e {}). As horas quentes são atribuídas à primeira zona que as serve, por ordem de escalada: humidificação, ventilação, massa térmica, massa térmica com ventilação nocturna, arrefecimento evaporativo, desumidificação e, por fim, ar condicionado. A protecção solar (zona {}) não é listada, porque a fonte a aplica a todas as horas acima de {} °C, em complemento de qualquer outra estratégia.',
 
 /* --- sol e céu ----------------------------------------------------------- */
 'Sun path with the year’s weather mapped onto it':'Percurso solar com o tempo do ano projectado sobre ele',
 'Stereographic projection for latitude {}°.':'Projecção estereográfica para a latitude {}°.',
 'Longest day {} h · shortest {} h':'Dia mais longo {} h · mais curto {} h',
 'Daily solar energy through the year':'Energia solar diária ao longo do ano',
-'Radiation through the day':'Radiação ao longo do dia',
-'The mean day of each month, and how much of the possible sunlight actually arrives':'O dia médio de cada mês, e quanto da luz solar possível chega efectivamente',
-'The average day, month by month':'O dia médio, mês a mês',
-'Sky clearness and daylight':'Limpidez do céu e luz natural',
-'Clearness index Kt — share of the available radiation reaching the ground':'Índice de limpidez Kt — proporção da radiação disponível que chega ao solo',
-'Daylight — hours per day above:':'Luz natural — horas por dia acima de:',
 '10 000 lux':'10 000 lux', '20 000 lux':'20 000 lux',
 'bold: June and December · faint: the other ten months':'a cheio: Junho e Dezembro · a claro: os outros dez meses',
 
@@ -4728,7 +4818,7 @@ dropBody:'Um ficheiro <b>EnergyPlus Weather</b> contém 8 760 registos horários
 ex1h:'Ler o ano de uma só vez',
 ex1p:'Cada variável do ficheiro é representada como um tapete anual — 365 dias na horizontal, 24 horas na vertical — de modo que a forma do clima, as suas estações e o seu ritmo diário se tornam uma única imagem. O nascer e o pôr do sol são desenhados por cima.',
 ex2h:'Projectar a partir do diagrama psicrométrico',
-ex2p:'O ano inteiro é projectado sobre um diagrama psicrométrico com as zonas bioclimáticas de Givoni–Milne. A percentagem de horas que cai em cada zona diz-lhe que estratégias passivas importam realmente neste local.',
+ex2p:'O ano inteiro é projectado sobre um diagrama psicrométrico com as zonas bioclimáticas de Givoni, na forma apresentada por Manzano-Agugliaro et al. (2015). A percentagem de horas que cai em cada zona diz-lhe que estratégias passivas importam realmente neste local.',
 ex3h:'Vento, sol e conforto',
 ex3p:'Rosas dos ventos por estação e por hora, um percurso solar estereográfico com as temperaturas do ano projectadas sobre ele, faixas de conforto adaptativo segundo a EN 16798-1 e graus-dia. Todos os gráficos se exportam em PNG ou CSV.',
 privacyNote:'Nada é enviado para fora. O ficheiro nunca sai deste computador.',
