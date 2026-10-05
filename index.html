@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+<!-- Climate Advisor · © 2026 Carlos C. Duarte · SPDX-License-Identifier: EUPL-1.2 -->
 <html lang="en">
 <head>
 <meta charset="utf-8">
@@ -230,33 +231,10 @@ table.inv td:last-child{text-align:left; font-family:var(--sans); color:var(--mu
 }
 #toast.on{opacity:1; transform:translateX(-50%) translateY(0)}
 
-/* ---------- Weather-file map ---------- */
-.mapblock{
-  border:1px solid var(--line); border-radius:12px; overflow:hidden;
-  margin-top:34px; background:#fff;
-}
-.mapblock-head{display:flex; align-items:flex-start; gap:16px; padding:15px 17px}
-.mapblock-head .t{flex:1 1 auto; min-width:0}
-.mapblock-head h4{font-size:14px; letter-spacing:-0.01em}
-.mapblock-head p{margin:5px 0 0; font-size:12.5px; color:var(--muted); line-height:1.6; max-width:66ch}
-.mapblock-head p a{color:var(--c1); text-decoration:none; border-bottom:1px solid rgba(37,99,235,.35)}
-.mapblock-head p a:hover{border-bottom-color:var(--c1)}
-.mapblock-actions{display:flex; flex-direction:column; gap:7px; flex:0 0 auto}
-.mapframe{position:relative; border-top:1px solid var(--line); background:var(--wash); display:none}
-.mapframe.on{display:block}
-.mapframe iframe{display:block; width:100%; height:min(64vh,620px); border:0}
-.mapstatus{
-  position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-  flex-direction:column; gap:8px; text-align:center; padding:26px; background:var(--wash);
-  font-size:13px; color:var(--muted); z-index:2;
-}
-.mapstatus.gone{display:none}
-.mapstatus b{color:var(--ink); font-size:13.5px}
-.mapstatus a{color:var(--c1)}
-.maphint{
-  padding:10px 17px; border-top:1px solid var(--line2); font-size:11.5px; color:var(--muted);
-  background:var(--wash); line-height:1.6;
-}
+/* ---------- Where weather files come from ---------- */
+.wxblock{border:1px solid var(--line); border-radius:12px; margin-top:34px; background:#fff; padding:15px 17px}
+.wxblock h4{font-size:14px; letter-spacing:-0.01em}
+.wxblock p{margin:5px 0 0; font-size:12.5px; color:var(--muted); line-height:1.6; max-width:66ch}
 
 /* ---------- Footer ---------- */
 footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)}
@@ -289,6 +267,19 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
   margin-top:24px; padding-top:16px; border-top:1px solid var(--line);
   font-size:11.5px; color:var(--faint); line-height:1.65; max-width:96ch;
 }
+.foot-notice{margin-top:24px; padding-top:16px; border-top:1px solid var(--line)}
+.foot-notice summary{
+  cursor:pointer; font-size:10.5px; text-transform:uppercase; letter-spacing:.09em;
+  color:var(--muted); font-weight:600;
+}
+.foot-notice summary:hover{color:var(--ink)}
+.foot-notice .lg-intro{margin:12px 0 0; max-width:96ch; color:var(--muted)}
+.lg-grid{display:grid; grid-template-columns:repeat(2, minmax(0, 1fr)); gap:18px 34px; margin-top:16px}
+@media(max-width:900px){.lg-grid{grid-template-columns:1fr}}
+.lg-grid h6{font-size:12px; font-weight:650; color:var(--ink); margin:0 0 4px}
+.lg-grid p{font-size:11.5px; line-height:1.65}
+.foot-notice code{font-family:var(--mono); font-size:11px}
+.foot-notice .lg-date{margin-top:14px; font-size:11px; color:var(--faint)}
 </style>
 </head>
 <body>
@@ -301,9 +292,10 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
       <span class="meta" id="chipMeta"></span>
       <button class="btn" id="btnReload" data-t="btnReload">Load another file</button>
     </div>
-    <div class="langsel" id="langsel" role="group" aria-label="Language / Idioma">
+    <div class="langsel" id="langsel" role="group" aria-label="Language / Idioma / Język">
       <button type="button" data-lang="en" aria-pressed="true" title="English">EN</button>
       <button type="button" data-lang="pt" aria-pressed="false" title="Português">PT</button>
+      <button type="button" data-lang="pl" aria-pressed="false" title="Polski">PL</button>
     </div>
   </div>
   <nav class="tabs" id="tabsNav" hidden>
@@ -346,29 +338,13 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
     </div>
     <p class="note" data-t="privacyNote">Nothing is uploaded. The file never leaves this computer.</p>
 
-    <div class="mapblock">
-      <div class="mapblock-head">
-        <div class="t">
-          <h4 data-t="mapTitle">Do not have a weather file yet?</h4>
-          <p data-t="mapBody">Weather files for several thousand stations worldwide are published through
-             <a href="https://www.ladybug.tools/epwmap/#close" target="_blank" rel="noopener noreferrer">Ladybug Tools EPWMap</a>.
-             Open the map, find the station nearest your site, download the <code>.epw</code>, and drop it above.
-             Prefer a station at a comparable altitude and distance from the coast over one that is merely closer in kilometres —
-             in Portugal, Bragança and Faro are 500 km apart and belong to different worlds.</p>
-        </div>
-        <div class="mapblock-actions">
-          <button class="btn solid" id="btnMap" data-t="btnMapOpen">Open the map here</button>
-          <a class="btn" href="https://www.ladybug.tools/epwmap/#close" target="_blank" rel="noopener noreferrer"
-             style="text-align:center;text-decoration:none;display:block" data-t="btnMapTab">Open in a new tab</a>
-        </div>
-      </div>
-      <div class="mapframe" id="mapFrame">
-        <div class="mapstatus" id="mapStatus" data-t="mapStatus"><b>Contacting ladybug.tools…</b><span>This is the only moment the application uses the network.</span></div>
-      </div>
-      <div class="maphint" id="mapHint" hidden data-t="mapHint">
-        The map is served by Ladybug Tools and its map tiles by Esri; opening it sends a request to those services.
-        Everything else in this application — parsing, charting, exporting — runs entirely on this computer.
-      </div>
+    <div class="wxblock">
+      <h4 data-t="wxTitle">Do not have a weather file yet?</h4>
+      <p data-t="wxBody">Climate Advisor does not supply weather files. EPW files are published by national
+         meteorological services, research institutions and software developers; download one from a source of your
+         choice, observe the licence conditions that come with it, and drop it above. Prefer a station at a comparable
+         altitude and distance from the coast over one that is merely closer in kilometres — in Portugal, Bragança and
+         Faro are 500 km apart and belong to different worlds.</p>
     </div>
   </div>
 
@@ -386,17 +362,18 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
       <div>
         <h5 data-t="footAuthor">Author</h5>
         <p>Carlos C. Duarte</p>
-        <h5 style="margin-top:14px" data-t="footInst">Institution</h5>
+        <h5 style="margin-top:14px" data-t="footInst">Affiliation</h5>
         <p>Lisbon School of Architecture,<br>Universidade de Lisboa</p>
         <h5 style="margin-top:14px" data-t="footDev">Developed with</h5>
         <p>Claude Opus 5 (Anthropic)</p>
       </div>
       <div>
         <h5 data-t="footWx">Weather files</h5>
-        <p><a href="https://www.ladybug.tools/epwmap/#close" target="_blank" rel="noopener noreferrer">Ladybug Tools EPWMap</a><br>
-           <span style="color:var(--muted)" data-t="footWxSub">Worldwide EPW downloads by station</span></p>
+        <p style="color:var(--muted)" data-t="footWxSub">Not supplied. Each user obtains them from a source of their
+           choice, under that source’s licence.</p>
         <h5 style="margin-top:14px" data-t="footPriv">Privacy</h5>
         <p style="color:var(--muted)" data-t="footPrivBody">Weather files are read in the browser. Nothing is uploaded.</p>
+        <p><a href="#legal" id="legalLink" data-t="footLegalLink">Privacy and legal notice</a></p>
       </div>
     </div>
 
@@ -418,8 +395,98 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
       </ul>
     </div>
 
+    <!-- Privacy and legal notice: GDPR Art. 13, Directive 2002/58/EC Art. 5(3) (PT Lei 41/2004 art. 5;
+         PL Prawo komunikacji elektronicznej art. 399), and the PL terms of service (UŚUDE art. 8).
+         Contact address is filled from APP.contact. -->
+    <details class="foot-notice" id="legal">
+      <summary data-t="lgSum">Privacy and legal notice</summary>
+      <p class="lg-intro" data-t="lgIntro">This notice is given under the General Data Protection Regulation (EU) 2016/679 (GDPR),
+        the ePrivacy Directive 2002/58/EC and the laws that implement them in Portugal and Poland. It also serves as the
+        terms of use of this service, including for the purposes of Art. 8 of the Polish Act of 18 July 2002 on Providing
+        Services by Electronic Means.</p>
+      <div class="lg-grid">
+        <section>
+          <h6 data-t="lgWhoH">Who is responsible</h6>
+          <p data-t="lgWho">Climate Advisor is a free, non-commercial teaching tool and a personal project of
+            <b>Carlos C. Duarte</b> (Portugal), who is solely responsible for it. The affiliation to the Lisbon School of
+            Architecture, Universidade de Lisboa, is given for identification only; the tool is not published by or on
+            behalf of the University. Contact: <a class="js-contact"></a>.</p>
+        </section>
+        <section>
+          <h6 data-t="lgDataH">What the application processes</h6>
+          <p data-t="lgData">None of your personal data. A weather file you open is read and analysed entirely inside your
+            browser; it is never uploaded, and nothing you do on the page is sent to the author or to anyone else. The page
+            has no accounts, forms, analytics, advertising, tracking cookies, social-media plug-ins, or externally loaded
+            fonts or scripts.</p>
+        </section>
+        <section>
+          <h6 data-t="lgHostH">Hosting</h6>
+          <p data-t="lgHost">The page is delivered by GitHub Pages, a service of GitHub, Inc. (United States). To serve the
+            page and protect its service, GitHub processes technical connection data, including your IP address, under its
+            own <a href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer">privacy statement</a>,
+            which also sets out the safeguards it applies to transfers outside the European Union. The author has no access
+            to this data. The legal basis for using a hosting service is the legitimate interest in making the tool
+            available (Art. 6(1)(f) GDPR).</p>
+        </section>
+        <section>
+          <h6 data-t="lgStoreH">Storage in your browser</h6>
+          <p data-t="lgStore">The page stores one item in your browser’s local storage: <code>ca-lang</code>, holding your
+            interface language (<code>en</code>, <code>pt</code> or <code>pl</code>). It is written only when you choose a
+            language, never leaves your device, and can be removed at any time by clearing this site’s data in your
+            browser. Because it is strictly necessary to provide a function you request, it needs no consent under
+            Art. 5(3) of Directive 2002/58/EC, Art. 5 of Portuguese Law No. 41/2004 and Art. 399 of the Polish Electronic
+            Communications Law of 12 July 2024. No cookie banner is therefore shown.</p>
+        </section>
+        <section>
+          <h6 data-t="lgMapH">Connections to third parties</h6>
+          <p data-t="lgMap">Once loaded, the page makes no network request of any kind. Your browser contacts a third
+            party only if you follow an external link (for example doi.org, NOAA, EnergyPlus, the EUPL page or a
+            supervisory authority); that site then receives your IP address and standard request data under its own
+            privacy policy.</p>
+        </section>
+        <section>
+          <h6 data-t="lgRightsH">Your rights</h6>
+          <p data-t="lgRights">Under Articles 15 to 22 GDPR you have the rights of access, rectification, erasure,
+            restriction, portability and objection. As the author holds no personal data about visitors, such requests will
+            normally find nothing to act upon, but they may be sent to <a class="js-contact"></a>; requests about hosting
+            data should be sent to GitHub. You also have the right to lodge a complaint with a supervisory authority, in
+            particular in the Member State where you live: in Portugal, the
+            <a href="https://www.cnpd.pt" target="_blank" rel="noopener noreferrer">Comissão Nacional de Proteção de Dados (CNPD)</a>;
+            in Poland, the <a href="https://uodo.gov.pl" target="_blank" rel="noopener noreferrer">President of the Personal Data Protection Office (UODO)</a>.</p>
+        </section>
+        <section>
+          <h6 data-t="lgTermsH">Terms of use</h6>
+          <p data-t="lgTerms">The tool is offered free of charge, without registration and without a contract; use begins
+            when the page is opened and ends when it is closed. It requires a current web browser with JavaScript enabled.
+            Users do not submit content to the service; supplying unlawful content by any means is prohibited. Comments and
+            complaints may be sent to <a class="js-contact"></a> and will be answered within 14 days.</p>
+        </section>
+        <section>
+          <h6 data-t="lgLiabH">Disclaimer</h6>
+          <p data-t="lgLiab">Climate Advisor is an educational instrument provided “as is”, without warranty of accuracy,
+            completeness or fitness for a particular purpose. Its results describe a climate; they are not a building
+            simulation and must not be used to demonstrate regulatory compliance for energy performance or comfort without
+            independent verification. To the extent permitted by law, the author accepts no liability for decisions made on
+            the basis of its output; this does not limit liability that cannot be excluded under applicable law, in
+            particular for intent or gross negligence. The author does not supply, host or distribute weather files and
+            is not responsible for their content, accuracy or licensing; each user obtains them independently, and they
+            remain subject to the licence conditions of the organisations that issued them.</p>
+        </section>
+        <section>
+          <h6 data-t="lgLicH">Licence</h6>
+          <p data-t="lgLic">The source code is licensed under the
+            <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">European Union Public Licence v. 1.2</a>
+            (EUPL-1.2), available in all official EU languages, each with equal legal value. You may use, study, modify and
+            redistribute it; a modified version that is distributed or made available online must be released under the
+            same licence or a compatible one listed in its Appendix. The full text is in the <code>LICENSE</code> file of
+            the repository.</p>
+        </section>
+      </div>
+      <p class="lg-date" data-t="lgDate">Last updated: 5 October 2026.</p>
+    </details>
+
     <p class="foot-legal" data-t="footLegal">
-      © 2026 Carlos C. Duarte. Weather files remain the property of the organisations that issued them, and their
+      © 2026 Carlos C. Duarte. Released under the <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">European Union Public Licence v. 1.2</a> (EUPL-1.2). Weather files remain the property of the organisations that issued them, and their
       licence conditions travel with the file — the IWEC and TMY series in particular carry restrictions on
       redistribution. This is a teaching instrument: it describes a climate, it does not simulate a building, and
       no figure it produces should be entered into a compliance calculation without independent verification.
@@ -442,11 +509,11 @@ footer{border-top:1px solid var(--line); margin-top:26px; background:var(--wash)
 /* ------------------------------------------------------------ 0. IDENTITY -- */
 const APP = {
   name:        'Climate Advisor',
-  version:     '1.6.1',
+  version:     '1.7.0',
   author:      'Carlos C. Duarte',
   institution: 'Lisbon School of Architecture, Universidade de Lisboa',
-  builtWith:   'Claude Opus 5 (Anthropic)',
-  epwSource:   'https://www.ladybug.tools/epwmap/#close'
+  contact:     'carlosfcduarte@edu.ulisboa.pt',   // controller contact shown in the privacy notice
+  builtWith:   'Claude Opus 5 (Anthropic)'
 };
 
 /* ------------------------------------------------------------ 0a. LANGUAGE --
@@ -457,27 +524,34 @@ const APP = {
    phrase appears in English instead of breaking the page. */
 let LANG = 'en';
 const PT = {};                       // European Portuguese, filled in at the foot of this script
+const PL = {};                       // Polish (Poland), likewise
 const STATIC_PT = {};                // static markup blocks, keyed by data-t
+const STATIC_PL = {};
+const DICT = { pt: PT, pl: PL };
+const STATIC = { pt: STATIC_PT, pl: STATIC_PL };
+const LOCALE = { en: 'en-GB', pt: 'pt-PT', pl: 'pl-PL' };
 const I18N_MISSING = new Set();      // anything asked for but not translated
 /* Numbers are abstracted out before lookup, so one entry covers every value a
    caption can take: "Range 4.3 to 21.7 °C" is keyed as "Range {} to {} °C". */
 const NUM_RE = /-?\d+(?:[ ., ]\d+)*/g;
 function t(s) {
   if (LANG === 'en' || typeof s !== 'string' || !s) return s;
-  const direct = PT[s];
+  const dict = DICT[LANG];
+  const direct = dict[s];
   if (direct !== undefined) return direct;
   const nums = [];
   const key = s.replace(NUM_RE, m => { nums.push(m); return '{}'; });
   if (key !== s) {
-    const tpl = PT[key];
+    const tpl = dict[key];
     if (tpl !== undefined) { let i = 0; return tpl.replace(/\{\}/g, () => nums[i++]); }
   }
   if (/[A-Za-z]{3}/.test(s)) I18N_MISSING.add(key);
   return s;
 }
-/** Decimal comma and thousands separator for Portuguese. */
-function locNum(str) { return LANG === 'pt' ? String(str).replace(/\./g, ',') : str; }
-const localeTag = () => LANG === 'pt' ? 'pt-PT' : 'en-GB';
+/** Decimal comma for Portuguese and Polish. */
+const usesDecimalComma = () => LANG === 'pt' || LANG === 'pl';
+function locNum(str) { return usesDecimalComma() ? String(str).replace(/\./g, ',') : str; }
+const localeTag = () => LOCALE[LANG];
 function nInt(v) { return Number(v).toLocaleString(localeTag()); }
 
 /**
@@ -485,10 +559,10 @@ function nInt(v) { return Number(v).toLocaleString(localeTag()); }
  * runs, so switching language repeatedly always translates from the original.
  */
 function applyLanguage() {
-  MONTHS    = LANG === 'pt' ? MONTHS_PT    : MONTHS_EN;
-  MON3      = LANG === 'pt' ? MON3_PT      : MON3_EN;
-  COMPASS16 = LANG === 'pt' ? COMPASS16_PT : COMPASS16_EN;
-  COMPASS8  = LANG === 'pt' ? COMPASS8_PT  : COMPASS8_EN;
+  MONTHS    = { en: MONTHS_EN,    pt: MONTHS_PT,    pl: MONTHS_PL    }[LANG];
+  MON3      = { en: MON3_EN,      pt: MON3_PT,      pl: MON3_PL      }[LANG];
+  COMPASS16 = { en: COMPASS16_EN, pt: COMPASS16_PT, pl: COMPASS16_EN }[LANG];   // Polish keeps N, E, S, W
+  COMPASS8  = { en: COMPASS8_EN,  pt: COMPASS8_PT,  pl: COMPASS8_EN  }[LANG];
   const relabel = (arr, keys) => arr.forEach(o => keys.forEach(k => {
     const bak = '_' + k;
     if (o[bak] === undefined) o[bak] = o[k];
@@ -498,7 +572,7 @@ function applyLanguage() {
   relabel(DERIVED,       ['label','group','unit']);
   relabel(PW_ELEMENTS,   ['name','short']);
   relabel(ROOF_SURFACES, ['name']);
-  document.documentElement.lang = LANG === 'pt' ? 'pt-PT' : 'en';
+  document.documentElement.lang = LANG === 'en' ? 'en' : LOCALE[LANG];
 }
 
 /* ---------------------------------------------------------------- 0. UTIL -- */
@@ -560,6 +634,8 @@ const MONTHS_EN = ['January','February','March','April','May','June','July','Aug
 const MONTHS_PT = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
 const MON3_EN = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 const MON3_PT = ['Jan','Fev','Mar','Abr','Mai','Jun','Jul','Ago','Set','Out','Nov','Dez'];
+const MONTHS_PL = ['Styczeń','Luty','Marzec','Kwiecień','Maj','Czerwiec','Lipiec','Sierpień','Wrzesień','Październik','Listopad','Grudzień'];
+const MON3_PL = ['Sty','Lut','Mar','Kwi','Maj','Cze','Lip','Sie','Wrz','Paź','Lis','Gru'];
 // Portuguese uses O for Oeste; every other point keeps its letter
 const COMPASS16_EN = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSW','SW','WSW','W','WNW','NW','NNW'];
 const COMPASS16_PT = ['N','NNE','NE','ENE','E','ESE','SE','SSE','S','SSO','SO','OSO','O','ONO','NO','NNO'];
@@ -1464,16 +1540,16 @@ function sectionHead(title, note) {
   return el('div', { class:'sechead' }, [ el('h3', { text:title }), note ? el('span', { text:note }) : null ]);
 }
 /**
- * A Portuguese spreadsheet expects the semicolon as list separator and the
- * comma as decimal mark, so the export follows the interface language. Numeric
+ * A Portuguese or Polish spreadsheet expects the semicolon as list separator and
+ * the comma as decimal mark, so the export follows the interface language. Numeric
  * fields are converted at this single point rather than at every call site.
  */
 function csvRows(rows) {
-  const sep = LANG === 'pt' ? ';' : ',';
+  const sep = usesDecimalComma() ? ';' : ',';
   const cell = v => {
     if (v === null || v === undefined || (typeof v === 'number' && !isFinite(v))) return '';
     let s = String(v);
-    if (LANG === 'pt' && /^-?\d+\.\d+$/.test(s)) s = s.replace('.', ',');
+    if (usesDecimalComma() && /^-?\d+\.\d+$/.test(s)) s = s.replace('.', ',');
     return new RegExp('["' + sep + '\\n]').test(s) ? '"' + s.replace(/"/g, '""') + '"' : s;
   };
   return rows.map(r => r.map(cell).join(sep)).join('\n');
@@ -4797,9 +4873,6 @@ Object.assign(PT, {
 'Snow was however observed falling in {} hours — see the events chart above.':
  'Foi contudo observada queda de neve em {} horas — ver o gráfico de fenómenos acima.',
 '{} days with lying snow · deepest {} cm':'{} dias com neve acumulada · máximo de {} cm',
-'The map is taking longer than expected.':'O mapa está a demorar mais do que o esperado.',
-'This computer appears to be offline.':'Este computador parece estar sem ligação à rede.',
-'Hide the map':'Ocultar o mapa', 'Open the map here':'Abrir o mapa aqui',
 'tenths':'décimos', 'days':'dias', 'nights':'noites', 'h falling':'h a cair',
 'Latitude':'Latitude', 'longitude':'longitude', 'elevation':'altitude',
 'm above sea level':'m acima do nível do mar', 'Standard meridian':'Meridiano de referência',
@@ -4822,22 +4895,600 @@ ex2p:'O ano inteiro é projectado sobre um diagrama psicrométrico com as zonas 
 ex3h:'Vento, sol e conforto',
 ex3p:'Rosas dos ventos por estação e por hora, um percurso solar estereográfico com as temperaturas do ano projectadas sobre ele, faixas de conforto adaptativo segundo a EN 16798-1 e graus-dia. Todos os gráficos se exportam em PNG ou CSV.',
 privacyNote:'Nada é enviado para fora. O ficheiro nunca sai deste computador.',
-mapTitle:'Ainda não tem um ficheiro climático?',
-mapBody:'Existem ficheiros climáticos para vários milhares de estações em todo o mundo, publicados através do <a href="https://www.ladybug.tools/epwmap/#close" target="_blank" rel="noopener noreferrer">Ladybug Tools EPWMap</a>. Abra o mapa, encontre a estação mais próxima do seu local, descarregue o <code>.epw</code> e largue-o acima. Prefira uma estação a uma altitude e a uma distância da costa comparáveis às do seu local, em vez de uma que esteja apenas mais perto em quilómetros — em Portugal, Bragança e Faro distam 500 km e pertencem a mundos diferentes.',
-btnMapOpen:'Abrir o mapa aqui',
-btnMapTab:'Abrir num separador novo',
-mapStatus:'<b>A contactar ladybug.tools…</b><span>Este é o único momento em que a aplicação usa a rede.</span>',
-mapHint:'O mapa é servido pelo Ladybug Tools e os seus mosaicos pela Esri; abri-lo envia um pedido a esses serviços. Todo o resto desta aplicação — a leitura, os gráficos, a exportação — corre inteiramente neste computador.',
+wxTitle:'Ainda não tem um ficheiro climático?',
+wxBody:'O Climate Advisor não fornece ficheiros climáticos. Os ficheiros EPW são publicados por serviços meteorológicos nacionais, instituições de investigação e criadores de software; descarregue um a partir de uma fonte à sua escolha, respeite as condições de licença que o acompanham e largue-o acima. Prefira uma estação a uma altitude e a uma distância da costa comparáveis às do seu local, em vez de uma que esteja apenas mais perto em quilómetros — em Portugal, Bragança e Faro distam 500 km e pertencem a mundos diferentes.',
 footTag:'Um leitor de ficheiros EnergyPlus Weather, escrito para estudantes de arquitectura que precisam de compreender um clima antes de poderem projectar para ele.',
 footAuthor:'Autor',
-footInst:'Instituição',
+footInst:'Filiação',
 footDev:'Desenvolvido com',
 footWx:'Ficheiros climáticos',
-footWxSub:'Descarregamentos de EPW por estação, em todo o mundo',
+footWxSub:'Não são fornecidos. Cada utilizador obtém-nos de uma fonte à sua escolha, nos termos da licença dessa fonte.',
 footPriv:'Privacidade',
 footPrivBody:'Os ficheiros climáticos são lidos no navegador. Nada é enviado para fora.',
 footMethods:'Métodos e fontes',
-footLegal:'© 2026 Carlos C. Duarte. Os ficheiros climáticos permanecem propriedade das organizações que os emitiram, e as suas condições de licença acompanham o ficheiro — as séries IWEC e TMY, em particular, impõem restrições à redistribuição. Este é um instrumento de ensino: descreve um clima, não simula um edifício, e nenhum valor que produza deve ser usado num cálculo de conformidade sem verificação independente.'
+footLegal:'© 2026 Carlos C. Duarte. Distribuído ao abrigo da <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">Licença Pública da União Europeia v. 1.2</a> (EUPL-1.2). Os ficheiros climáticos permanecem propriedade das organizações que os emitiram, e as suas condições de licença acompanham o ficheiro — as séries IWEC e TMY, em particular, impõem restrições à redistribuição. Este é um instrumento de ensino: descreve um clima, não simula um edifício, e nenhum valor que produza deve ser usado num cálculo de conformidade sem verificação independente.'
+});
+
+/* ===========================================================================
+   POLSKI (Polska) — słownik interfejsu
+   Brakujący wpis nie psuje strony: fraza pojawia się po angielsku.
+   Klucze z {} otrzymują z powrotem liczby, które klucz wyabstrahował.
+   ========================================================================= */
+Object.assign(PL, {
+
+/* --- nawigacja i struktura ---------------------------------------------- */
+'Climate overview':'Przegląd klimatu', 'Data view':'Widok danych', 'Wind':'Wiatr',
+'Psychrometrics':'Psychrometria', 'Sun and sky':'Słońce i niebo', 'Water and snow':'Woda i śnieg',
+'Comfort':'Komfort',
+'Load another file':'Wczytaj inny plik', 'Choose an .epw file':'Wybierz plik .epw',
+'PNG':'PNG', 'CSV':'CSV', 'Whole year':'Cały rok', 'Reset':'Resetuj',
+'Export this chart as a PNG image at {}× resolution':'Eksportuj ten wykres jako obraz PNG w rozdzielczości {}×',
+'Export the underlying numbers as CSV':'Eksportuj dane źródłowe do pliku CSV',
+'PNG exported at {} × {} px':'Wyeksportowano PNG w rozmiarze {} × {} px', 'CSV exported':'Wyeksportowano CSV',
+'Nothing to export yet — open the chart first':'Nie ma jeszcze czego eksportować — najpierw otwórz wykres',
+'This view could not be built from the file: ':'Nie można zbudować tego widoku na podstawie pliku: ',
+'Chart error: ':'Błąd wykresu: ',
+
+/* --- jednostki i terminy powtarzalne ------------------------------------- */
+'Month':'Miesiąc', 'Year':'Rok', 'Hours':'Godziny', 'hours':'godziny', 'days':'dni', 'derived':'wyliczone',
+'Value':'Wartość', 'Unit':'Jednostka', 'Condition':'Warunek', 'Quantity':'Wielkość', 'Status':'Stan',
+'Column':'Kolumna', 'Variable':'Zmienna', 'Colour':'Kolor', 'Colour by':'Koloruj według',
+'Colour hours by':'Koloruj godziny według', 'Mean':'Średnia', 'Monthly mean':'Średnia miesięczna',
+'Hour of day':'Godzina doby', 'Time of day':'Pora doby', 'Sectors':'Sektory',
+'{} directions':'{} kierunków', 'Speed bands':'Przedziały prędkości',
+'From':'Od', 'to':'do', 'Lower':'Dolna', 'Upper':'Górna', 'Usable from':'Użyteczne od',
+'Surface':'Powierzchnia', 'Roof area':'Powierzchnia dachu', 'Runoff coefficient C':'Współczynnik spływu C',
+'Base temperature':'Temperatura bazowa', 'Air movement limit':'Granica ruchu powietrza',
+'Comfort from':'Komfort od', 'Clip tails':'Obetnij skrajne wartości', 'Zones':'Strefy',
+'Sunrise / sunset':'Wschód / zachód słońca', 'Hourly figures':'Figury godzinowe',
+'Monthly arcs':'Łuki miesięczne', 'Weather data':'Dane pogodowe',
+'Relative humidity lines':'Linie wilgotności względnej', 'Wet-bulb lines':'Linie temperatury termometru mokrego',
+'Enthalpy lines':'Linie entalpii', 'Density of hours':'Gęstość godzin', 'Plain':'Zwykły',
+'Automatic':'Automatycznie', 'Thermal (diverging)':'Termiczna (rozbieżna)', 'Solar':'Słoneczna',
+'Aqua':'Akwamaryna', 'Indigo':'Indygo', 'Slate':'Łupek', 'Ember':'Żar', 'Viridis':'Viridis',
+'Greyscale':'Skala szarości', 'Radiation':'Promieniowanie', 'Daylight':'Światło dzienne',
+'Recorded':'Zarejestrowane', 'Empty':'Puste', 'Unreliable':'Niewiarygodne',
+'whole year':'cały rok', 'all hours':'wszystkie godziny',
+'Most exposed':'Najbardziej narażona', 'of the total':'całości', 'of the period':'okresu',
+'hours between':'godzin między', 'and':'i', 'mean {}':'średnia {}', 'median {}':'mediana {}',
+'{}th pct → max':'{}. percentyl → maks.', '{}th → {}th pct':'{}. → {}. percentyl',
+'calm {} %':'cisza {} %', 'calm < {} m/s ({} %)':'cisza < {} m/s ({} %)', '% calm':'% ciszy',
+'Field {}':'Pole {}', 'Fields {}–{}':'Pola {}–{}', 'What the file says':'Co mówi plik',
+
+/* --- grupy i nazwy zmiennych ------------------------------------------- */
+'Air':'Powietrze', 'Sky':'Niebo', 'Ground':'Grunt', 'Derived':'Wielkości wyliczone',
+'Dry-bulb temperature':'Temperatura termometru suchego', 'Dew-point temperature':'Temperatura punktu rosy',
+'Relative humidity':'Wilgotność względna', 'Atmospheric station pressure':'Ciśnienie atmosferyczne na stacji',
+'Horizontal infrared from sky':'Promieniowanie podczerwone nieba na płaszczyznę poziomą',
+'Global horizontal radiation':'Promieniowanie całkowite na płaszczyznę poziomą', 'Direct normal radiation':'Promieniowanie bezpośrednie normalne',
+'Diffuse horizontal radiation':'Promieniowanie rozproszone na płaszczyznę poziomą',
+'Global horizontal illuminance':'Natężenie oświetlenia całkowitego na płaszczyznę poziomą',
+'Direct normal illuminance':'Natężenie oświetlenia bezpośredniego normalnego',
+'Diffuse horizontal illuminance':'Natężenie oświetlenia rozproszonego na płaszczyznę poziomą',
+'Zenith luminance':'Luminancja w zenicie', 'Wind direction':'Kierunek wiatru',
+'Wind speed':'Prędkość wiatru', 'Total sky cover':'Całkowite zachmurzenie',
+'Opaque sky cover':'Zachmurzenie nieprzejrzyste', 'Visibility':'Widzialność', 'Ceiling height':'Wysokość podstawy chmur',
+'Precipitable water':'Zawartość pary wodnej w atmosferze', 'Aerosol optical depth':'Grubość optyczna aerozolu',
+'Snow depth':'Grubość pokrywy śnieżnej', 'Days since last snowfall':'Dni od ostatniego opadu śniegu',
+'Albedo':'Albedo', 'Liquid precipitation depth':'Wysokość opadu ciekłego',
+'Liquid precipitation quantity':'Czas trwania opadu ciekłego',
+'Humidity ratio':'Wilgotność właściwa', 'Wet-bulb temperature':'Temperatura termometru mokrego',
+'Enthalpy':'Entalpia', 'Vapour pressure':'Prężność pary wodnej',
+'Solar altitude':'Wysokość słońca', 'Solar azimuth':'Azymut słońca',
+'Extraterrestrial horizontal rad.':'Promien. pozaziemskie na płaszczyznę poziomą',
+'Extraterrestrial direct normal':'Promien. pozaziemskie bezpośrednie normalne',
+'Temperature (°C)':'Temperatura (°C)', 'Hours per year':'Godziny w roku', 'Hours per cell':'Godziny na komórkę',
+'Sky cover (tenths)':'Zachmurzenie (dziesiąte części)', 'Litres per month':'Litry na miesiąc',
+'Days per month':'Dni w miesiącu', 'Observed hours':'Godziny z obserwacją', 'h/day':'h/dobę', 'Kt':'Kt',
+'Precipitation (mm)':'Opady (mm)', 'kWh/m² per month':'kWh/m² na miesiąc',
+'kWh/m² per day':'kWh/m² na dobę', 'W/m²':'W/m²', 'Mean irradiance (W/m²)':'Średnie natężenie promieniowania (W/m²)',
+'Degree days (K·d), base {} °C':'Stopniodni (K·d), baza {} °C',
+'Humidity ratio (g water / kg dry air)':'Wilgotność właściwa (g wody / kg powietrza suchego)',
+'Dry-bulb temperature (°C)':'Temperatura termometru suchego (°C)',
+'Running mean outdoor temperature (°C)':'Kroczący średni dobowy wskaźnik temperatury zewnętrznej (°C)',
+'Outdoor air temperature at the hour (°C)':'Temperatura powietrza zewnętrznego o danej godzinie (°C)',
+'Hours of the year at or above':'Godziny w roku z wartością co najmniej',
+'Wind speed (m/s)':'Prędkość wiatru (m/s)', 'Snow depth (cm)':'Grubość pokrywy śnieżnej (cm)',
+'Share of days in the band':'Udział dni w przedziale',
+'Clearness index':'Wskaźnik przejrzystości atmosfery', 'Global horizontal':'Całkowite poziome',
+'Direct normal':'Bezpośrednie normalne', 'Diffuse horizontal':'Rozproszone poziome',
+'Diffuse (sky only)':'Rozproszone (tylko niebo)', 'Direct normal (beam)':'Bezpośrednie normalne (wiązka)',
+'Diffuse horizontal (sky)':'Rozproszone poziome (niebo)',
+
+/* --- przegląd klimatu ---------------------------------------------------- */
+'Mean annual temperature':'Średnia temperatura roczna', 'Seasonal amplitude':'Amplituda sezonowa',
+'Mean daily swing':'Średnia amplituda dobowa', 'Heating degree days':'Stopniodni grzania',
+'Cooling degree days':'Stopniodni chłodzenia', 'Mean relative humidity':'Średnia wilgotność względna',
+'Prevailing wind':'Wiatr przeważający', 'Range {} to {} °C':'Zakres od {} do {} °C',
+'Direct normal {} kWh/m²·a':'Bezpośrednie normalne {} kWh/m²·rok', 'Base {} °C':'Baza {} °C',
+'Mean wind speed {} m/s':'Średnia prędkość wiatru {} m/s',
+'{} % of hours · calm {} %':'{} % godzin · cisza {} %',
+'Large — thermal mass is effective':'Duża — masa termiczna jest skuteczna',
+'Moderate':'Umiarkowana', 'Small — night cooling is limited':'Mała — chłodzenie nocne jest ograniczone',
+'The shape of the year':'Kształt roku',
+'Daily envelope for the whole year, or hourly detail for the days you select below':'Obwiednia dobowa dla całego roku lub szczegóły godzinowe dla dni wybranych poniżej',
+'Temperature through the year':'Temperatura w ciągu roku',
+'Shaded band: daily minimum to maximum. Line: daily mean. Drag the strip below to zoom into hourly detail for a shorter span.':
+  'Zacieniowany pas: od minimum do maksimum dobowego. Linia: średnia dobowa. Przeciągnij pasek poniżej, aby powiększyć szczegóły godzinowe krótszego okresu.',
+'Daily min – max':'Min. – maks. dobowe', 'Daily mean':'Średnia dobowa',
+'Below and around the building':'Pod budynkiem i wokół niego',
+'Undisturbed ground temperatures and the sky the envelope sees':'Temperatury gruntu niezaburzonego i niebo, które widzi przegroda zewnętrzna',
+'Undisturbed ground temperature':'Temperatura gruntu niezaburzonego',
+'Depth {} m':'Głębokość {} m', 'Mean annual air {} °C':'Średnia roczna temperatura powietrza {} °C',
+'Sky cover and humidity through the year':'Zachmurzenie i wilgotność w ciągu roku',
+'Monthly normals':'Normy miesięczne',
+'The same information as a table, for reading exact values':'Te same informacje w tabeli, do odczytu dokładnych wartości',
+'Mean °C':'Średnia °C', 'Min °C':'Min. °C', 'Max °C':'Maks. °C',
+'Mean daily range K':'Średnia amplituda dobowa K', 'Dew point °C':'Punkt rosy °C', 'RH %':'WW %',
+'Global horiz. kWh/m²':'Całk. poz. kWh/m²', 'Wind m/s':'Wiatr m/s',
+'CDD{} K·d':'SCh{} K·d', 'HDD{} K·d':'SG{} K·d',
+'ASHRAE design conditions':'Warunki obliczeniowe ASHRAE',
+'Meaning for design':'Znaczenie dla projektowania',
+'Heating, {} % dry bulb':'Ogrzewanie, termometr suchy {} %',
+'Cooling, {} % dry bulb':'Chłodzenie, termometr suchy {} %',
+'Coincident wet bulb {} °C':'Współwystępujący termometr mokry {} °C',
+'Only {} % of hours are colder — the winter sizing temperature':'Tylko {} % godzin jest chłodniejszych — zimowa temperatura obliczeniowa',
+'The common design temperature for envelope loss calculations':'Powszechna temperatura obliczeniowa do wyznaczania strat przez przegrody',
+'Mean daily range in the hottest month':'Średnia amplituda dobowa w najcieplejszym miesiącu',
+'Extreme annual minimum':'Ekstremalne minimum roczne', 'Extreme annual maximum {} °C':'Ekstremalne maksimum roczne {} °C',
+'Wide enough for night ventilation and exposed thermal mass':'Wystarczająco duża dla wentylacji nocnej i odsłoniętej masy termicznej',
+'Moderate — night ventilation helps but will not do the work alone':'Umiarkowana — wentylacja nocna pomaga, lecz sama nie wystarczy',
+'Too narrow for night cooling to be relied upon':'Zbyt mała, aby polegać na chłodzeniu nocnym',
+'File note — ':'Uwaga do pliku — ',
+
+/* --- widok danych -------------------------------------------------------- */
+'Every variable in the file':'Każda zmienna w pliku',
+'Annual hourly carpet':'Roczny dywan godzinowy',
+'Every hour of the year as one cell.':'Każda godzina roku jako jedna komórka.',
+'Monthly diurnal profiles':'Miesięczne profile dobowe',
+'Frequency distribution':'Rozkład częstości', 'Duration curve':'Krzywa uporządkowana',
+'How many hours of the year fall in each interval.':'Ile godzin w roku przypada na każdy przedział.',
+'colour clipped at {} % / {} % — extremes retain the end colour':'kolor obcięty na poziomie {} % / {} % — wartości skrajne zachowują kolor krańcowy',
+
+/* --- wiatr --------------------------------------------------------------- */
+'Wind rose':'Róża wiatrów',
+'Frequency of hours by direction and speed.':'Częstość godzin według kierunku i prędkości.',
+'Usable ventilation wind':'Wiatr użyteczny dla wentylacji',
+'Seasonal shift':'Zmiana sezonowa',
+'Twelve roses on a common scale — where the wind moves through the year':'Dwanaście róż w jednej skali — jak wiatr zmienia się w ciągu roku',
+'Monthly wind roses':'Miesięczne róże wiatrów',
+'North is up · outermost ring = {} % of the month':'Północ u góry · zewnętrzny pierścień = {} % miesiąca',
+'Wind speed distribution':'Rozkład prędkości wiatru',
+'Wind speed through the year':'Prędkość wiatru w ciągu roku',
+'Mean and peak hourly wind speed by month, for the selected hours of the day.':'Średnia i szczytowa godzinowa prędkość wiatru według miesięcy, dla wybranych godzin doby.',
+'Beaufort scale':'Skala Beauforta',
+'The wind force scale as codified by the World Meteorological Organization, in metres per second':'Skala siły wiatru w ujęciu Światowej Organizacji Meteorologicznej, w metrach na sekundę',
+'Force':'Siła', 'Description':'Opis', 'Effects on land':'Skutki na lądzie',
+'Calm':'Cisza', 'Light air':'Powiew', 'Light breeze':'Słaby wiatr', 'Gentle breeze':'Łagodny wiatr',
+'Moderate breeze':'Umiarkowany wiatr', 'Fresh breeze':'Dość silny wiatr', 'Strong breeze':'Silny wiatr',
+'Near gale':'Bardzo silny wiatr', 'Gale':'Sztorm', 'Strong gale':'Silny sztorm', 'Storm':'Gwałtowny sztorm',
+'Violent storm':'Wichura', 'Hurricane':'Huragan',
+'Smoke rises vertically':'Dym unosi się pionowo',
+'Wind motion visible in smoke, not in wind vanes':'Ruch wiatru widoczny w dymie, lecz nie na wiatrowskazach',
+'Wind felt on the face; leaves rustle':'Wiatr wyczuwalny na twarzy; liście szeleszczą',
+'Leaves and small twigs in constant motion':'Liście i małe gałązki w ciągłym ruchu',
+'Raises dust and loose paper; small branches move':'Unosi kurz i luźne kartki; małe gałęzie się poruszają',
+'Small trees in leaf begin to sway':'Małe drzewa z liśćmi zaczynają się kołysać',
+'Large branches in motion; umbrellas used with difficulty':'Duże gałęzie w ruchu; trudno korzystać z parasoli',
+'Whole trees in motion; walking against the wind is an effort':'Całe drzewa w ruchu; marsz pod wiatr wymaga wysiłku',
+'Twigs break off trees; walking is generally impeded':'Gałązki łamią się na drzewach; chodzenie jest zazwyczaj utrudnione',
+'Slight structural damage — chimney pots and roof slates may lift':'Lekkie uszkodzenia konstrukcji — mogą się unosić nasady kominowe i dachówki',
+'Trees uprooted; considerable structural damage':'Drzewa wyrywane z korzeniami; znaczne uszkodzenia konstrukcji',
+'Widespread damage':'Rozległe zniszczenia',
+'Devastation':'Dewastacja',
+'World Meteorological Organization scale, 10-minute mean wind speed at 10 m height. Source: Met Office and Royal Meteorological Society.':
+  'Skala Światowej Organizacji Meteorologicznej, średnia 10-minutowa prędkość wiatru na wysokości 10 m. Źródło: Met Office i Royal Meteorological Society.',
+
+/* --- psychrometria ------------------------------------------------------- */
+'Psychrometric chart':'Wykres psychrometryczny',
+'Psychrometric chart with bioclimatic zones':'Wykres psychrometryczny ze strefami bioklimatycznymi',
+'Barometric pressure {} kPa, computed from the site elevation of {} m.':'Ciśnienie barometryczne {} kPa, obliczone na podstawie wysokości miejsca {} m n.p.m.',
+'{} °C — temperate occupants':'{} °C — użytkownicy w klimacie umiarkowanym',
+'{} °C — hot climate, acclimatised':'{} °C — klimat gorący, użytkownicy zaaklimatyzowani',
+'Comfort zone':'Strefa komfortu', 'No system required':'Instalacja nie jest potrzebna',
+'Internal heat gains':'Wewnętrzne zyski ciepła', 'Occupants, lighting and equipment cover the gap':'Użytkownicy, oświetlenie i urządzenia pokrywają niedobór',
+'Passive solar heating':'Pasywne ogrzewanie słoneczne',
+'South glazing with mass to store the gain':'Przeszklenie od południa z masą akumulującą zyski',
+'Cross ventilation':'Wentylacja poprzeczna',
+'Unassisted breezes; effective to about {} °C (Lapithis, {})':'Bryzy bez wspomagania; skuteczne do ok. {} °C (Lapithis, {})',
+'Ventilation with elevated air speed':'Wentylacja ze zwiększoną prędkością powietrza',
+'Needs {}–{} m/s at the occupant — ceiling or desk fans (Givoni, {})':'Wymaga {}–{} m/s przy użytkowniku — wentylatory sufitowe lub biurkowe (Givoni, {})',
+'High thermal mass':'Duża masa termiczna',
+'Needs a daily swing of at least {} K':'Wymaga amplitudy dobowej co najmniej {} K',
+'Mass with night ventilation':'Masa z wentylacją nocną',
+'Seal by day, flush after dark; needs a swing of at least {} K':'Zamknąć w dzień, przewietrzyć po zmroku; wymaga amplitudy co najmniej {} K',
+'Direct evaporative cooling':'Bezpośrednie chłodzenie wyparne',
+'Only where the air is dry — wet bulb below {} °C':'Tylko tam, gdzie powietrze jest suche — termometr mokry poniżej {} °C',
+'Dehumidification required':'Wymagane osuszanie',
+'Moisture, not heat, is the problem':'Problemem jest wilgoć, nie ciepło',
+'Humidification required':'Wymagane nawilżanie',
+'Very dry air; a winter issue in continental climates':'Bardzo suche powietrze; problem zimowy w klimacie kontynentalnym',
+'Active heating required':'Wymagane ogrzewanie aktywne',
+'Too cold for gains, solar or mass to close the gap on their own':'Zbyt zimno, aby zyski, słońce lub masa same pokryły niedobór',
+'What each strategy could cover':'Co mogłaby pokryć każda strategia',
+'Share of the {} selected hours that falls inside each zone. Zones overlap — an hour may be served by more than one strategy.':'Udział spośród {} wybranych godzin przypadający na każdą strefę. Strefy zachodzą na siebie — jedna godzina może być obsłużona przez więcej niż jedną strategię.',
+'The year divided once':'Rok podzielony jednokrotnie',
+'Each hour assigned to a single, most appropriate response — the passive options taken in preference to the active ones.':'Każda godzina przypisana do jednej, najbardziej odpowiedniej reakcji — rozwiązania pasywne przed aktywnymi.',
+'Already comfortable':'Komfort już zapewniony', 'Internal gains suffice':'Zyski wewnętrzne wystarczają',
+'Ventilation with fans':'Wentylacja z wentylatorami', 'Mass with night flush':'Masa z przewietrzaniem nocnym',
+'Evaporative cooling':'Chłodzenie wyparne', 'Dehumidification':'Osuszanie',
+'Humidification':'Nawilżanie', 'Active heating':'Ogrzewanie aktywne', 'Active cooling':'Chłodzenie aktywne',
+'Permissible comfort zone':'Dopuszczalna strefa komfortu', 'Heating by internal gains':'Ogrzewanie zyskami wewnętrznymi',
+'Active solar heating':'Aktywne ogrzewanie słoneczne', 'Conventional heating':'Ogrzewanie konwencjonalne',
+'Solar protection':'Ochrona przed słońcem', 'Cooling by high thermal mass':'Chłodzenie dużą masą termiczną',
+'High thermal mass with night ventilation':'Duża masa termiczna z wentylacją nocną',
+'Natural and mechanical ventilation':'Wentylacja naturalna i mechaniczna', 'Air conditioning':'Klimatyzacja',
+'Conventional dehumidification':'Osuszanie konwencjonalne', 'Zone numbers':'Numery stref',
+'Return to all {} hours':'Wróć do wszystkich {} godzin',
+'{}–{} °C, {}–{} % RH. No system required':'{}–{} °C, {}–{} % WW. Instalacja nie jest potrzebna',
+'{}–{} °C, {}–{} % RH, cut by the line {} °C / {} % – {} °C / {} %':'{}–{} °C, {}–{} % WW, ucięta linią {} °C / {} % – {} °C / {} %',
+'{}–{} °C. Occupants, lighting and equipment':'{}–{} °C. Użytkownicy, oświetlenie i urządzenia',
+'{}–{} °C. Glazing, sunspaces and Trombe walls with mass':'{}–{} °C. Przeszklenia, ogrody zimowe i ściany Trombego z masą',
+'{}–{} °C. Solar collectors feeding radiant floors or radiators':'{}–{} °C. Kolektory słoneczne zasilające ogrzewanie podłogowe lub grzejniki',
+'Up to {} °C, below {} % RH at {} °C. Vegetation, water surfaces':'Do {} °C, poniżej {} % WW przy {} °C. Roślinność, powierzchnie wodne',
+'Below {} °C (the source chart starts at −{} °C)':'Poniżej {} °C (wykres źródłowy zaczyna się od −{} °C)',
+'From {} °C upwards. Shading of openings and envelope':'Od {} °C wzwyż. Zacienianie otworów i przegród zewnętrznych',
+'{}–{} °C, below the line {} °C / {} % – {} °C / {} %':'{}–{} °C, poniżej linii {} °C / {} % – {} °C / {} %',
+'{}–{} °C, below {} °C / {} % – {} °C / {} % – {} °C / {} %':'{}–{} °C, poniżej {} °C / {} % – {} °C / {} % – {} °C / {} %',
+'Warm hours below {} % RH that no passive zone reaches':'Ciepłe godziny poniżej {} % WW, których nie obejmuje żadna strefa pasywna',
+'Above {} °C and above {} % RH':'Powyżej {} °C i powyżej {} % WW',
+'<b>Zones after Manzano-Agugliaro et al. ({}, Fig. {}), adapted from Givoni.</b> Each boundary is drawn from the dry-bulb and relative-humidity intersections given in Section {} of that review: limits stated as a range of relative humidity follow the RH curves, and the dotted lines joining two intersections are straight. The zones are fixed by the source and do not move with the site. Zones overlap; an hour already inside zones {} or {} is not counted towards any cooling or humidification strategy.':
+ '<b>Strefy według Manzano-Agugliaro i in. ({}, rys. {}), na podstawie Givoniego.</b> Każda granica jest wykreślona z punktów przecięcia temperatury termometru suchego i wilgotności względnej podanych w sekcji {} tego przeglądu: granice podane jako zakres wilgotności względnej biegną wzdłuż krzywych WW, a linie kropkowane łączące dwa punkty przecięcia są proste. Strefy są ustalone przez źródło i nie zmieniają się wraz z miejscem. Strefy zachodzą na siebie; godzina leżąca już w strefach {} lub {} nie jest zaliczana do żadnej strategii chłodzenia ani nawilżania.',
+'<b>Reading this.</b> Cold hours are credited to the heating band of their temperature (zones {}, {}, {} and {}). Warm hours are credited to the first zone that serves them in order of escalation: humidification, ventilation, thermal mass, thermal mass with night ventilation, evaporative cooling, dehumidification and, finally, air conditioning. Solar protection (zone {}) is not listed, because the source applies it to every hour above {} °C in addition to whichever strategy is chosen.':
+ '<b>Jak to czytać.</b> Godziny zimne są przypisywane do pasma ogrzewania odpowiadającego ich temperaturze (strefy {}, {}, {} i {}). Godziny ciepłe są przypisywane do pierwszej strefy, która je obsługuje, w kolejności eskalacji: nawilżanie, wentylacja, masa termiczna, masa termiczna z wentylacją nocną, chłodzenie wyparne, osuszanie i wreszcie klimatyzacja. Ochrona przed słońcem (strefa {}) nie jest wymieniona, ponieważ źródło stosuje ją do każdej godziny powyżej {} °C, niezależnie od wybranej strategii.',
+
+/* --- słońce i niebo ------------------------------------------------------ */
+'Sun path with the year’s weather mapped onto it':'Wykres drogi słońca z naniesioną pogodą roku',
+'Stereographic projection for latitude {}°.':'Rzut stereograficzny dla szerokości geograficznej {}°.',
+'Longest day {} h · shortest {} h':'Najdłuższy dzień {} h · najkrótszy {} h',
+'Daily solar energy through the year':'Dobowa energia słoneczna w ciągu roku',
+'10 000 lux':'10 000 lx', '20 000 lux':'20 000 lx',
+'bold: June and December · faint: the other ten months':'pogrubione: czerwiec i grudzień · przygaszone: pozostałe dziesięć miesięcy',
+
+/* --- woda i śnieg -------------------------------------------------------- */
+'Water, snow and frost':'Woda, śnieg i mróz',
+'Annual precipitation':'Opady roczne', 'not recorded':'niezarejestrowane',
+'Observed precipitation':'Obserwowane opady', 'Lying snow':'Pokrywa śnieżna',
+'Freeze–thaw cycles':'Cykle zamarzania i rozmarzania', 'What this file records':'Co rejestruje ten plik',
+'Every moisture-related column in the EPW record, tested before use':'Każda kolumna rekordu EPW związana z wilgocią, przetestowana przed użyciem',
+'The liquid precipitation column is empty':'Kolumna opadu ciekłego jest pusta',
+'No present-weather observations in this file':'Brak obserwacji pogody bieżącej w tym pliku',
+'Snow depth is not recorded; these are observed hours of snowfall':'Grubość pokrywy śnieżnej nie jest rejestrowana; są to godziny z zaobserwowanym opadem śniegu',
+'Neither depth nor observation available':'Brak zarówno wysokości, jak i obserwacji',
+'Deepest cover {} cm':'Największa grubość pokrywy {} cm',
+'{} h rain or drizzle · {} h snow or ice':'{} h deszczu lub mżawki · {} h śniegu lub lodu',
+'Severe — porous materials at the base of a wall will suffer':'Poważne — materiały porowate u podstawy ściany ulegną zniszczeniu',
+'Mild':'Łagodne', 'None — the site never crosses 0 °C':'Brak — temperatura w tym miejscu nigdy nie przekracza 0 °C',
+'Precipitation through the year':'Opady w ciągu roku',
+'Measured depth, month by month':'Zmierzona grubość, miesiąc po miesiącu',
+'Reconstructed from observed weather, because no depth was recorded':'Odtworzona na podstawie obserwowanej pogody, ponieważ nie zarejestrowano grubości',
+'Monthly precipitation':'Opady miesięczne',
+'Observed precipitation hours by month':'Godziny z obserwowanymi opadami według miesięcy',
+'Total depth falling in each month, with the annual total. Read the dry season for water storage and the wet season for drainage and driving rain.':'Całkowita wysokość opadów w każdym miesiącu wraz z sumą roczną. Pora sucha wskazuje na potrzebę retencji wody, pora mokra — na odwodnienie i deszcz uderzający.',
+'Observed weather events':'Zaobserwowane zjawiska pogodowe',
+'Rain or drizzle':'Deszcz lub mżawka', 'Snow or ice':'Śnieg lub lód', 'Fog':'Mgła',
+'Observed, none of these':'Zaobserwowano, żadne z tych zjawisk',
+'Rain':'Deszcz', 'Drizzle':'Mżawka', 'Snow':'Śnieg', 'Snow showers':'Przelotny śnieg',
+'Sleet or hail':'Deszcz ze śniegiem lub grad', 'Thunderstorm':'Burza',
+'Haze or smoke':'Zmętnienie lub dym', 'Ice pellets':'Krupa lodowa',
+'Thunderstorm, tornado or squall':'Burza, tornado lub szkwał',
+'Rain, rain showers or freezing rain':'Deszcz, przelotny deszcz lub marznący deszcz',
+'Rain squalls, drizzle or freezing drizzle':'Szkwały deszczu, mżawka lub marznąca mżawka',
+'Snow, snow pellets or ice crystals':'Śnieg, krupa śnieżna lub kryształki lodu',
+'Snow showers, snow squalls or snow grains':'Przelotny śnieg, szkwały śnieżne lub ziarna śniegu',
+'Fog, ice fog or freezing fog':'Mgła, mgła lodowa lub marznąca mgła',
+'Smoke, haze, dust or blowing snow':'Dym, zmętnienie, pył lub zawieja śnieżna',
+'Snow, frost and the freeze–thaw count':'Śnieg, mróz i liczba cykli zamarzania i rozmarzania',
+'What acts on the fabric when the temperature crosses zero':'Co działa na materię budynku, gdy temperatura przechodzi przez zero',
+'Snow cover through the year':'Pokrywa śnieżna w ciągu roku',
+'This file has no usable snow-depth record.':'Ten plik nie zawiera użytecznego zapisu grubości pokrywy śnieżnej.',
+'The snow-depth column failed its plausibility test':'Kolumna grubości pokrywy śnieżnej nie przeszła testu wiarygodności',
+'No snow depth in this file':'Brak grubości pokrywy śnieżnej w tym pliku',
+'Frost, ice and freeze–thaw days':'Dni z przymrozkiem, dni mroźne i dni z przejściem przez 0 °C',
+'Frost days':'Dni z przymrozkiem', 'Ice days':'Dni mroźne', 'Freeze–thaw':'Zamarzanie i rozmarzanie',
+'Consequences for the building':'Konsekwencje dla budynku',
+'Which face gets wet, and how much water a roof would yield':'Która elewacja jest moczona i ile wody dałby dach',
+'Which façade gets wet':'Która elewacja jest moczona',
+'Cannot be computed for this file':'Nie można obliczyć dla tego pliku',
+'Rainwater a roof would collect':'Woda deszczowa, jaką zebrałby dach',
+'{} litres per year':'{} litrów rocznie', 'm² on plan':'m² w rzucie',
+'leanest month':'najsuchszy miesiąc', 'the figure a tank must bridge':'wartość, którą zbiornik musi przezwyciężyć',
+'Metal sheet or standing seam':'Blacha lub rąbek stojący',
+'Glazed or ceramic tile':'Dachówka glazurowana lub ceramiczna',
+'Concrete or clay tile, unglazed':'Dachówka betonowa lub ceramiczna, nieglazurowana',
+'Bituminous shingle':'Gont bitumiczny',
+'Sealed membrane, flat or low pitch':'Membrana szczelna, dach płaski lub o małym nachyleniu',
+'Gravel-ballasted flat roof':'Dach płaski z balastem żwirowym',
+'Hours below {} °C':'Godziny poniżej {} °C', 'Hours above {} °C':'Godziny powyżej {} °C',
+'Hours above {} % RH':'Godziny powyżej {} % WW', 'Tropical nights':'Noce tropikalne',
+'Frost risk and cold-bridge condensation':'Ryzyko mrozu i kondensacji na mostkach termicznych',
+'The overheating exposure a façade must answer':'Narażenie na przegrzewanie, na które musi odpowiedzieć elewacja',
+'Mould and drying-out risk for construction':'Ryzyko pleśni i wysychania konstrukcji',
+'Nights whose minimum stays above {} °C — night ventilation fails':'Noce, w których minimum pozostaje powyżej {} °C — wentylacja nocna zawodzi',
+
+/* --- komfort ------------------------------------------------------------- */
+'Comfort and degree days':'Komfort i stopniodni',
+'Adaptive comfort — EN {}{}':'Komfort adaptacyjny — EN {}{}',
+'Category I  (± {} K)':'Kategoria I  (± {} K)', 'Category II  (± {} K)':'Kategoria II  (± {} K)',
+'Category III (± {} K)':'Kategoria III (± {} K)',
+'Category I — ± {} K':'Kategoria I — ± {} K', 'Category II — ± {} K':'Kategoria II — ± {} K',
+'Category III — ± {} K':'Kategoria III — ± {} K',
+'Colder than Category III':'Chłodniej niż w kategorii III',
+'Warmer than Category III':'Cieplej niż w kategorii III',
+'How often the outdoor air is already acceptable indoors':'Jak często powietrze zewnętrzne jest już akceptowalne wewnątrz',
+'the band applies only between {} and {} °C running mean':'pasmo obowiązuje tylko dla kroczącej średniej od {} do {} °C',
+'Degree days':'Stopniodni',
+'The seasonal size of the heating and cooling task':'Sezonowa skala zadania ogrzewania i chłodzenia',
+'Monthly heating and cooling degree days':'Miesięczne stopniodni grzania i chłodzenia',
+'Computed from daily mean temperatures against the base below.':'Obliczone ze średnich dobowych temperatur względem podanej poniżej bazy.',
+'Heating':'Ogrzewanie', 'Cooling':'Chłodzenie',
+'When natural ventilation would work':'Kiedy wentylacja naturalna byłaby skuteczna',
+'The thermal year, classified':'Rok cieplny w klasyfikacji',
+'Every hour placed in one of five bands':'Każda godzina przypisana do jednego z pięciu pasm',
+'Temperature bands across the year':'Pasma temperatury w ciągu roku',
+'Below freezing':'Poniżej zera', 'Cold — heating needed':'Zimno — potrzebne ogrzewanie',
+'Cool — internal gains may suffice':'Chłodno — zyski wewnętrzne mogą wystarczyć',
+'Comfortable range':'Zakres komfortu',
+'Warm — ventilation or mass needed':'Ciepło — potrzebna wentylacja lub masa',
+'Hot — passive measures reach their limit':'Gorąco — środki pasywne osiągają swoją granicę'
+});
+
+/* --- długie teksty: wstępy do stron i uwagi do paneli ------------------- */
+Object.assign(PL, {
+
+'Latitude {}°, longitude {}°, elevation {} m above sea level. Standard meridian UTC+{}. Source: {}, WMO station {}. {} hourly records.':
+ 'Szerokość geograficzna {}°, długość geograficzna {}°, wysokość {} m n.p.m. Południk strefowy UTC+{}. Źródło: {}, stacja WMO {}. Liczba rekordów godzinowych: {}.',
+
+'Outer band: absolute minimum to maximum. Inner band: mean daily minimum to mean daily maximum. Marker: monthly mean.':
+ 'Pas zewnętrzny: od minimum do maksimum bezwzględnego. Pas wewnętrzny: od średniego minimum dobowego do średniego maksimum dobowego. Znacznik: średnia miesięczna.',
+
+'Energy arriving per square metre each month. Global horizontal drives roof and site gains; direct normal drives what a shading device must intercept.':
+ 'Energia docierająca na metr kwadratowy w każdym miesiącu. Promieniowanie całkowite poziome decyduje o zyskach dachu i terenu; bezpośrednie normalne decyduje o tym, co musi przechwycić osłona przeciwsłoneczna.',
+
+'From the file header. The deeper the probe, the flatter and more delayed the curve — this is the resource a buried or earth-coupled building draws on.':
+ 'Z nagłówka pliku. Im głębiej sięga sonda, tym krzywa jest płaższa i bardziej opóźniona — to zasób, z którego korzysta budynek zagłębiony lub sprzężony z gruntem.',
+
+'Monthly mean opaque sky cover and relative humidity. A persistently clouded sky suppresses both direct gain and radiant night cooling.':
+ 'Średnie miesięczne zachmurzenie nieprzejrzyste i wilgotność względna. Trwale zachmurzone niebo ogranicza zarówno zyski bezpośrednie, jak i nocne chłodzenie radiacyjne.',
+
+'The annual carpet places all {} hours on one image: days run left to right, hours of the day run bottom to top. Seasons appear as horizontal drift, the daily cycle as vertical banding. Choose any variable the file contains.':
+ 'Roczny dywan umieszcza wszystkie {} godzin na jednym obrazie: dni biegną od lewej do prawej, godziny doby od dołu do góry. Pory roku widać jako poziomy dryf, cykl dobowy jako pionowe pasy. Wybierz dowolną zmienną zawartą w pliku.',
+
+'<b>Clip tails</b> discards the given percentage at each end of the distribution before mapping colour, so a handful of extreme hours do not flatten the whole year into one tone. Hover any cell for the exact hour.':
+ '<b>Obetnij skrajne wartości</b> odrzuca podany odsetek na każdym końcu rozkładu przed przypisaniem kolorów, aby garstka godzin ekstremalnych nie spłaszczyła całego roku do jednego odcienia. Najedź kursorem na dowolną komórkę, aby zobaczyć dokładną godzinę.',
+
+'For each month, the average day. Outer band spans the observed minimum to maximum for that hour; inner band the middle half of the observations; the line is the mean.':
+ 'Dla każdego miesiąca — dzień przeciętny. Pas zewnętrzny obejmuje obserwowane minimum i maksimum dla danej godziny; pas wewnętrzny — środkową połowę obserwacji; linia to średnia.',
+
+'Values ranked from highest to lowest. Read it as: “for how many hours of the year is the value at least X?”':
+ 'Wartości uszeregowane od największej do najmniejszej. Odczytuj to tak: „przez ile godzin w roku wartość wynosi co najmniej X?”',
+
+'A wind rose reads outward from the centre: each petal points to the direction the wind comes from, its length is the percentage of hours from that direction, and the bands within it are speed. Filter by season and by hour to find out whether the wind you would use for ventilation is the same wind you must shelter from in winter.':
+ 'Różę wiatrów odczytuje się od środka na zewnątrz: każdy płatek wskazuje kierunek, z którego wieje wiatr, jego długość to odsetek godzin z tego kierunku, a pasy wewnątrz oznaczają prędkość. Filtruj według pory roku i godziny, aby sprawdzić, czy wiatr, którego użyłbyś do wentylacji, jest tym samym wiatrem, przed którym trzeba się osłaniać zimą.',
+
+'The same rose restricted to hours when the outdoor air is already close to comfortable, and so can be admitted directly. This is the wind an opening should be oriented to.':
+ 'Ta sama róża ograniczona do godzin, w których powietrze zewnętrzne jest już bliskie komfortowemu i może być wpuszczane bezpośrednio. Na ten wiatr powinien być zorientowany otwór.',
+
+'All twelve share one radial scale, so petal lengths are directly comparable between months. The hour filter above applies.':
+ 'Wszystkie dwanaście ma wspólną skalę promieniową, więc długości płatków są bezpośrednio porównywalne między miesiącami. Obowiązuje filtr godzin powyżej.',
+
+'Hours per year at each speed. The dashed marks give the speeds exceeded {} %, {} % and {} % of the time — the last is the one that matters for comfort at building entrances and on terraces.':
+ 'Liczba godzin w roku przy każdej prędkości. Linie przerywane wskazują prędkości przekraczane przez {} %, {} % i {} % czasu — ostatnia jest istotna dla komfortu przy wejściach do budynków i na tarasach.',
+
+'Every hour of the year plotted by its dry-bulb temperature and its moisture content. The curved upper boundary is saturation — air cannot hold more water than that. Where the cloud of hours sits relative to the comfort zone tells you what the building has to do, and the surrounding zones tell you which passive strategy can do it.':
+ 'Każda godzina roku naniesiona według temperatury termometru suchego i zawartości wilgoci. Zakrzywiona górna granica to nasycenie — powietrze nie może zawierać więcej wody. Położenie chmury godzin względem strefy komfortu mówi, co musi zrobić budynek, a otaczające strefy wskazują, która strategia pasywna może to zrobić.',
+
+'<b>The warm-side thresholds are absolute, not relative to the comfort band.</b> Unassisted cross ventilation stops compensating for the heat at about <b>{} °C</b> (Lapithis, {}). Elevated air speed of {}–{} m/s — a ceiling fan, not a breeze — extends that to <b>{} °C</b> for temperate occupants and <b>{} °C</b> where people are acclimatised to a hot climate (Givoni, {}); the selector above chooses between the two. Beyond that the strategy has to change in kind rather than in degree: the building is sealed by day and its mass flushed at night (Lechner, {}). Moving the comfort sliders shifts the comfort zone, but it does not move these limits, because the physiology does not move with them.':
+ '<b>Progi po stronie ciepłej są bezwzględne, a nie względne wobec pasma komfortu.</b> Wentylacja poprzeczna bez wspomagania przestaje kompensować upał przy ok. <b>{} °C</b> (Lapithis, {}). Zwiększona prędkość powietrza {}–{} m/s — wentylator sufitowy, nie bryza — podnosi tę granicę do <b>{} °C</b> dla użytkowników w klimacie umiarkowanym i do <b>{} °C</b> tam, gdzie ludzie są zaaklimatyzowani do gorącego klimatu (Givoni, {}); selektor powyżej wybiera między tymi dwiema wartościami. Powyżej tej granicy strategia musi zmienić się jakościowo, a nie tylko ilościowo: budynek jest zamknięty w dzień, a jego masa przewietrzana nocą (Lechner, {}). Przesunięcie suwaków komfortu zmienia strefę komfortu, ale nie przesuwa tych granic, ponieważ fizjologia nie zmienia się wraz z nimi.',
+
+'<b>Reading this.</b> The warm-side categories are ranked by escalation, so each hour is credited to the least equipment that would serve it. A large “already comfortable” share means the envelope’s job is mainly to not spoil what is outside. A large cross-ventilation share argues for openable façades on opposite sides of the plan; if the share only appears once fans are allowed, the design depends on air movement being delivered, not merely on windows opening. A large night-flush share points to exposed mass and a secure way of leaving the building open after dark. Evaporative cooling only appears in dry climates. Dehumidification and active cooling are what no passive measure will remove.':
+ '<b>Jak to czytać.</b> Kategorie po stronie ciepłej są uszeregowane według eskalacji, więc każda godzina jest przypisana do najmniejszego wyposażenia, które by ją obsłużyło. Duży udział „komfort już zapewniony” oznacza, że zadaniem przegrody zewnętrznej jest przede wszystkim nie zepsuć tego, co jest na zewnątrz. Duży udział wentylacji poprzecznej przemawia za otwieranymi elewacjami po przeciwnych stronach rzutu; jeśli udział pojawia się dopiero po dopuszczeniu wentylatorów, projekt zależy od zapewnienia ruchu powietrza, a nie tylko od otwierania okien. Duży udział przewietrzania nocnego wskazuje na odsłoniętą masę i bezpieczny sposób pozostawienia budynku otwartego po zmroku. Chłodzenie wyparne pojawia się tylko w klimacie suchym. Osuszania i chłodzenia aktywnego nie zastąpi żaden środek pasywny.',
+
+'The sun path is drawn in stereographic projection: the horizon is the outer circle, the zenith is the centre, and north is at the top. Seven arcs give the sun’s track on the {}st of each month from June to December — each one is shared with its mirror month on the other side of the solstice — and the looped figures are the sun’s position at a fixed hour across the whole year. Colouring the hours by temperature shows, directly, which part of the sky delivers unwanted heat and which part delivers welcome warmth, which is the whole question a shading device answers.':
+ 'Drogę słońca przedstawiono w rzucie stereograficznym: horyzont to zewnętrzny okrąg, zenit to środek, a północ jest u góry. Siedem łuków pokazuje tor słońca w {}. dniu każdego miesiąca od czerwca do grudnia — każdy z nich jest wspólny z miesiącem lustrzanym po drugiej stronie przesilenia — a figury w kształcie pętli to położenie słońca o stałej godzinie w ciągu całego roku. Kolorowanie godzin według temperatury pokazuje wprost, która część nieba dostarcza niepożądanego ciepła, a która ciepła pożądanego, a na to pytanie odpowiada właśnie osłona przeciwsłoneczna.',
+
+'Global horizontal radiation received each day, with a seven-day mean. The gap between the envelope and the mean is cloud.':
+ 'Promieniowanie całkowite na płaszczyznę poziomą otrzymane w każdym dniu, ze średnią siedmiodniową. Różnica między obwiednią a średnią to zachmurzenie.',
+
+'Twelve average days on one shared scale. The filled curve is what a horizontal surface — a roof, a skylight, the ground — actually receives. The solid red line is the beam measured square-on to the sun: this is the radiation a shading device has to intercept, and it stays high even in winter when the horizontal figure has collapsed. The dashed line is the diffuse light from the sky alone, which is all that a north façade, or any façade under overcast sky, ever gets. Read the width of each curve for the length of the day and the height for the intensity.':
+ 'Dwanaście dni przeciętnych w jednej wspólnej skali. Krzywa wypełniona to to, co faktycznie otrzymuje powierzchnia pozioma — dach, świetlik, grunt. Ciągła czerwona linia to wiązka mierzona prostopadle do słońca: to promieniowanie, które musi przechwycić osłona przeciwsłoneczna, a które pozostaje wysokie nawet zimą, gdy wartość na płaszczyznę poziomą gwałtownie spada. Linia przerywana to samo światło rozproszone z nieba, a tylko tyle dociera do elewacji północnej lub jakiejkolwiek elewacji przy zachmurzonym niebie. Szerokość każdej krzywej wskazuje długość dnia, a wysokość — natężenie.',
+
+'The clearness index, written Kt, is the share of the radiation available just above the atmosphere that actually reaches the ground. A value near {} is a cloudless desert sky; near {} is persistent overcast. It is the single number that says how much this site is clouded, and therefore how much a direct-gain or daylighting strategy can be relied upon. Below it, the number of hours in an average day on which a horizontal surface outdoors is brighter than {} and {} lux — thresholds well above what any interior needs, so they measure the resource available to be let in.':
+ 'Wskaźnik przejrzystości atmosfery, oznaczany Kt, to udział promieniowania dostępnego tuż nad atmosferą, który faktycznie dociera do gruntu. Wartość bliska {} oznacza bezchmurne niebo pustyni; bliska {} — trwałe zachmurzenie. To jedna liczba, która mówi, jak bardzo to miejsce jest zachmurzone, a więc na ile można polegać na strategii zysków bezpośrednich lub oświetlenia dziennego. Poniżej podano liczbę godzin w przeciętnej dobie, w których powierzchnia pozioma na zewnątrz jest jaśniejsza niż {} i {} lx — progi znacznie wyższe niż potrzeby jakiegokolwiek wnętrza, więc mierzą zasób dostępny do wpuszczenia.',
+
+'Rain and snow are the parts of a climate that act on a building most directly — they decide the roof, the overhang, the drainage and the choice of material at the base of a wall. They are also the parts the EPW format handles worst: the columns exist, but most published files leave them empty. This page shows what your file actually carries, tests it before plotting it, and derives what it can from the columns that are reliable.':
+ 'Deszcz i śnieg to te elementy klimatu, które oddziałują na budynek najbardziej bezpośrednio — decydują o dachu, o okapie, o odwodnieniu i o wyborze materiału u podstawy ściany. Są też tymi, które format EPW obsługuje najsłabiej: kolumny istnieją, lecz większość opublikowanych plików pozostawia je pustymi. Ta strona pokazuje, co faktycznie zawiera Twój plik, testuje to przed naniesieniem na wykres i wylicza, co się da, z kolumn wiarygodnych.',
+
+'<b>Provenance.</b> This file does carry a measured precipitation depth, which many published series omit altogether — every figure below is computed from it. Bear in mind that a typical-year file splices months taken from different years, so the annual total is a representative quantity rather than the rainfall of any year that actually occurred. Use it to size a strategy, not to predict a season.':
+ '<b>Pochodzenie danych.</b> Ten plik zawiera zmierzoną wysokość opadów, której wiele opublikowanych serii w ogóle nie podaje — wszystkie poniższe wartości są z niej obliczone. Należy pamiętać, że plik roku typowego łączy miesiące z różnych lat, więc suma roczna jest wielkością reprezentatywną, a nie opadem żadnego roku, który faktycznie wystąpił. Użyj jej do wymiarowania strategii, nie do przewidywania sezonu.',
+
+'Hours in which each phenomenon was observed, out of the {} hours ({} % of the year) for which this file carries an observation. Treat every figure as a floor, not a total.':
+ 'Liczba godzin, w których zaobserwowano każde zjawisko, spośród {} godzin ({} % roku), dla których ten plik zawiera obserwację. Każdą wartość traktuj jako dolną granicę, a nie sumę.',
+
+'Hours in which rain, drizzle, snow or ice was observed at the station. Because observations cover only part of the year, these are lower bounds — the true number of wet hours is higher, and no depth can be inferred from them at all.':
+ 'Liczba godzin, w których na stacji zaobserwowano deszcz, mżawkę, śnieg lub lód. Ponieważ obserwacje obejmują tylko część roku, są to dolne granice — rzeczywista liczba godzin mokrych jest większa i nie można z nich wnioskować o żadnej wysokości opadów.',
+
+'Depth of lying snow on each day. The length of the cover matters as much as the depth: continuous cover insulates the ground and loads the roof for weeks at a time.':
+ 'Grubość pokrywy śnieżnej w każdym dniu. Czas zalegania ma takie samo znaczenie jak grubość: ciągła pokrywa izoluje grunt i obciąża dach przez tygodnie.',
+
+'A frost day dips below {} °C; an ice day never rises above it; a freeze–thaw day does both, and it is the freeze–thaw count that destroys porous stone, brick and render. Derived from air temperature, so this chart works for every weather file.':
+ 'W dniu z przymrozkiem temperatura spada poniżej {} °C; w dniu mroźnym nigdy nie wzrasta powyżej tej wartości; dzień z przejściem przez 0 °C spełnia oba warunki, a to właśnie liczba takich dni niszczy porowaty kamień, cegłę i tynk. Wyliczone z temperatury powietrza, więc wykres działa dla każdego pliku pogodowego.',
+
+'One millimetre of rain on one square metre is one litre. Multiply by the roof area and by the runoff coefficient, and you have the yield. Enter the area as measured on plan: rain falls vertically, so a pitched roof collects over its horizontal projection, not over its developed surface.':
+ 'Jeden milimetr deszczu na jednym metrze kwadratowym to jeden litr. Pomnóż przez powierzchnię dachu i współczynnik spływu, a otrzymasz uzysk. Wprowadź powierzchnię zmierzoną w rzucie: deszcz pada pionowo, więc dach spadzisty zbiera wodę na swoim rzucie poziomym, a nie na powierzchni rozwiniętej.',
+
+'<b>The runoff coefficient, C</b>, is the fraction of the rain landing on the roof that actually reaches the tank. The remainder is lost: held in the texture of the surface and evaporated after the shower, absorbed by a porous material, blown off, or overshooting the gutter in heavy rain. It is a property of the surface rather than of the climate. Smooth, well-pitched roofs in metal or glazed tile shed almost everything, <b>C ≈ {}–{}</b>; flat membranes and gravel-ballasted roofs hold and return much more, <b>C ≈ {}–{}</b>. Vegetated roofs sit far below this range, around {}–{}, and are deliberately not offered here — a green roof is a retention strategy, not a collection one.':
+ '<b>Współczynnik spływu C</b> to ta część deszczu padającego na dach, która faktycznie dociera do zbiornika. Reszta ulega stratom: zatrzymuje się w fakturze powierzchni i odparowuje po opadzie, wchłania się w materiał porowaty, zostaje zdmuchnięta lub przelewa się ponad rynną podczas ulewy. Jest to cecha powierzchni, a nie klimatu. Gładkie, dobrze nachylone dachy z blachy lub dachówki glazurowanej odprowadzają niemal wszystko, <b>C ≈ {}–{}</b>; membrany płaskie i dachy z balastem żwirowym zatrzymują i oddają znacznie mniej, <b>C ≈ {}–{}</b>. Dachy zielone leżą daleko poniżej tego zakresu, około {}–{}, i celowo nie są tu oferowane — dach zielony to strategia retencji, a nie zbierania wody.',
+
+'Rainfall weighted by the wind direction it arrived with. The longest petal is the orientation that needs the deepest overhang, the most robust joint and the most careful choice of finish. This is a relative exposure, not a wall index to EN ISO {}{} — no terrain or obstruction factors are applied.':
+ 'Opady ważone kierunkiem wiatru, z którym nadeszły. Najdłuższy płatek wskazuje orientację wymagającą najgłębszego okapu, najtrwalszego połączenia i najstaranniej dobranego wykończenia. Jest to ekspozycja względna, a nie wskaźnik ściany według EN ISO {}{} — nie uwzględniono współczynników terenu ani przeszkód.',
+
+'Two ways of asking the same question. Adaptive comfort asks what indoor temperature the occupants of a naturally ventilated building will accept, given what they have been experiencing outdoors. Degree days ask how much heating or cooling energy the season will demand. The first shapes the design; the second sizes it.':
+ 'Dwa sposoby zadania tego samego pytania. Komfort adaptacyjny pyta, jaką temperaturę wewnętrzną zaakceptują użytkownicy budynku wentylowanego naturalnie, biorąc pod uwagę to, czego doświadczali na zewnątrz. Stopniodni pytają, ile energii do ogrzewania lub chłodzenia będzie wymagał sezon. Pierwsze kształtuje projekt; drugie go wymiaruje.',
+
+'Each dot is one hour, placed by the running mean outdoor temperature of its day and by the outdoor air temperature at that hour. The band is the acceptable indoor operative temperature for a free-running building.':
+ 'Każdy punkt to jedna godzina, umieszczona według kroczącej średniej temperatury zewnętrznej jej doby oraz temperatury powietrza zewnętrznego o tej godzinie. Pasmo to dopuszczalna wewnętrzna temperatura operatywna dla budynku bez systemów (free-running).',
+
+'<b>A caution.</b> This compares the <i>outdoor</i> air temperature with an <i>indoor</i> operative comfort band, so it measures the potential of the free-running strategy, not the performance of a building. A real room is warmer than outside by its internal gains and solar gain, and steadier by its thermal mass.':
+ '<b>Ostrzeżenie.</b> Porównuje się tu temperaturę powietrza <i>zewnętrznego</i> z <i>wewnętrznym</i> pasmem komfortu operatywnego, więc mierzony jest potencjał strategii bez systemów, a nie wydajność budynku. Rzeczywiste pomieszczenie jest cieplejsze od otoczenia dzięki zyskom wewnętrznym i słonecznym, a stabilniejsze dzięki masie termicznej.',
+
+'Of the {} hours for which the adaptive model applies, this is the share that already sits inside each category — before the building does anything at all.':
+ 'Spośród {} godzin, dla których obowiązuje model adaptacyjny, jest to udział już mieszczący się w każdej kategorii — zanim budynek zrobi cokolwiek.',
+
+'For every month and hour of the day, the share of days on which the outdoor air sits inside the usable band — the timetable a ventilation strategy has to live by.':
+ 'Dla każdego miesiąca i godziny doby — udział dni, w których powietrze zewnętrzne mieści się w paśmie użytecznym; harmonogram, według którego musi działać strategia wentylacji.',
+
+'The same carpet as the data view, but reduced to design-relevant categories. Read the shape of the heating season, the cooling season, and the shoulder months in between.':
+ 'Ten sam dywan co w widoku danych, ale sprowadzony do kategorii istotnych dla projektowania. Odczytaj kształt sezonu grzewczego, sezonu chłodzenia i miesięcy przejściowych pomiędzy nimi.',
+
+'Direct normal is measured perpendicular to the beam and drives shading design; diffuse is what a north-facing or overcast façade receives.':
+ 'Promieniowanie bezpośrednie normalne mierzy się prostopadle do wiązki i ono decyduje o projekcie osłon przeciwsłonecznych; rozproszone to to, co otrzymuje elewacja północna lub elewacja przy zachmurzonym niebie.',
+
+/* --- stany brakujących danych -------------------------------------------- */
+'A single repeated value — a placeholder, not a record.':'Jedna powtarzająca się wartość — wypełniacz, a nie zapis.',
+'Empty — the period each precipitation figure refers to is not stated.':'Puste — okres, którego dotyczy każda wartość opadu, nie jest podany.',
+'Empty.':'Puste.', 'Populated.':'Wypełnione.',
+'Empty; ground reflectance must be assumed.':'Puste; odbicie od gruntu trzeba przyjąć.',
+'Populated — ground reflectance varies through the year.':'Wypełnione — odbicie od gruntu zmienia się w ciągu roku.',
+'Mean {} mm of water in the air column.':'Średnio {} mm wody w słupie powietrza.',
+'{} mm over the year, peak hourly {} mm.':'{} mm w ciągu roku, maksimum godzinowe {} mm.',
+'{} wet hours in the year':'{} godzin mokrych w roku',
+'{} frost days, {} ice days, {} freeze–thaw days. Derived from dry-bulb temperature, so always available.':
+ 'Dni z przymrozkiem: {}, dni mroźnych: {}, dni z przejściem przez 0 °C: {}. Wyliczone z temperatury termometru suchego, więc zawsze dostępne.',
+'Observations for {} hours, {} % of the year. Rain, snow and fog can be counted for those hours only.':
+ 'Obserwacje dla {} godzin, {} % roku. Deszcz, śnieg i mgłę można zliczyć tylko dla tych godzin.',
+'No hour in this file carries a valid observation code.':'Żadna godzina w tym pliku nie zawiera prawidłowego kodu obserwacji.',
+'The column is absent or marked missing for every hour.':'Kolumna jest nieobecna lub oznaczona jako brakująca dla każdej godziny.',
+'The column is present but reads 0.0 mm for all {} hours — no precipitation was recorded in this file.':
+ 'Kolumna istnieje, ale wskazuje 0,0 mm dla wszystkich {} godzin — w tym pliku nie zarejestrowano żadnych opadów.',
+'The column reads 0 cm for all {} hours — either the site never has lying snow, or the field was never filled.':
+ 'Kolumna wskazuje 0 cm dla wszystkich {} godzin — albo w tym miejscu nigdy nie zalega śnieg, albo pole nigdy nie zostało wypełnione.',
+'Rejected: {} % of the hours this column marks as snow-covered are warmer than {} °C, and it peaks at {} cm. The column holds a placeholder, not a measurement.':
+ 'Odrzucona: {} % godzin oznaczonych w tej kolumnie jako pokryte śniegiem ma temperaturę powyżej {} °C, a maksimum wynosi {} cm. Kolumna zawiera wypełniacz, a nie pomiar.',
+'Rejected: the column only ever takes {} distinct values, which indicates a placeholder rather than a record.':
+ 'Odrzucona: kolumna przyjmuje tylko {} różnych wartości, co wskazuje na wypełniacz, a nie na zapis.',
+'Plausible: deepest cover {} cm over {} days.':'Wiarygodna: największa grubość pokrywy {} cm w ciągu {} dni.',
+'This file records no precipitation at all':'Ten plik w ogóle nie rejestruje opadów',
+'Neither a depth column nor a present-weather observation is populated. Nothing about rain or snow at this site can be recovered from it.':
+ 'Nie jest wypełniona ani kolumna wysokości, ani obserwacja pogody bieżącej. Nic o deszczu ani śniegu w tym miejscu nie da się z niego odtworzyć.',
+'No present-weather observations':'Brak obserwacji pogody bieżącej',
+'Field 27 reads 9 for every hour, so the nine-digit weather code carries no information. Files assembled from full synoptic records usually populate it.':
+ 'Pole 27 wskazuje 9 dla każdej godziny, więc dziewięciocyfrowy kod pogody nie niesie żadnej informacji. Pliki zbudowane z pełnych zapisów synoptycznych zwykle je wypełniają.',
+'A harvesting estimate needs millimetres of rainfall. Field 34 of this file is empty, so there is nothing to convert. Load a file whose precipitation column is populated and this chart, its roof-area control and its annual yield will appear.':
+ 'Oszacowanie zbierania wody wymaga opadów w milimetrach. Pole 34 tego pliku jest puste, więc nie ma czego przeliczać. Wczytaj plik z wypełnioną kolumną opadów, a pojawi się ten wykres, jego kontrolka powierzchni dachu i roczny uzysk.',
+'Deciding which façade is driven with rain needs either a precipitation depth or an observation of when it was raining, together with the wind at that moment. This file supplies neither.':
+ 'Ustalenie, która elewacja jest bita deszczem, wymaga albo wysokości opadu, albo obserwacji, kiedy padało, wraz z wiatrem w tym momencie. Ten plik nie dostarcza ani jednego, ani drugiego.',
+'Observations exist, but record no events':'Obserwacje istnieją, lecz nie rejestrują żadnych zjawisk',
+'Every observed hour was clear.':'Każda obserwowana godzina była pogodna.',
+'out of {} observed hours':'spośród {} obserwowanych godzin',
+'No usable hours in this selection.':'Brak użytecznych godzin w tym wyborze.',
+'Above saturation — this state cannot exist':'Powyżej nasycenia — ten stan nie może istnieć',
+
+/* --- ostatnie wpisy ------------------------------------------------------ */
+'Solar radiation':'Promieniowanie słoneczne',
+'Present weather codes':'Kody pogody bieżącej',
+'Air temperature crossings of {} °C':'Przejścia temperatury powietrza przez {} °C',
+'Return to all {} hours and the default comfort band':'Wróć do wszystkich {} godzin i domyślnego pasma komfortu',
+'litres per year':'litrów rocznie',
+'h falling':'h opadu', 'days per year':'dni w roku', 'nights':'nocy',
+'h':'h', 'mm':'mm',
+'Annual total {} mm':'Suma roczna {} mm',
+'Annual total {} kWh/m² · best day {} kWh/m²':'Suma roczna {} kWh/m² · najlepszy dzień {} kWh/m²',
+'{} mm of rain, by the wind direction it fell with':'{} mm deszczu według kierunku wiatru, z którym padał',
+'{} observed precipitation hours, by wind direction':'{} godzin z obserwowanymi opadami według kierunku wiatru',
+'Snow was however observed falling in {} hours — see the events chart above.':
+ 'Opad śniegu zaobserwowano jednak w {} godzinach — zob. wykres zjawisk powyżej.',
+'{} days with lying snow · deepest {} cm':'{} dni z pokrywą śnieżną · największa grubość {} cm',
+'tenths':'dziesiąte części', 'days':'dni', 'nights':'nocy', 'h falling':'h opadu',
+'Latitude':'Szerokość geograficzna', 'longitude':'długość geograficzna', 'elevation':'wysokość',
+'m above sea level':'m n.p.m.', 'Standard meridian':'Południk strefowy',
+'Source':'Źródło', 'unstated':'niepodane', 'WMO station':'stacja WMO',
+'hourly records':'rekordów godzinowych',
+'days per year':'dni w roku', 'K·d':'K·d', 'lux':'lx'
+});
+
+/* --- bloki statycznego znacznika, według data-t -------------------------- */
+Object.assign(STATIC_PL, {
+brandsub:'Eksplorator EPW',
+btnReload:'Wczytaj inny plik',
+btnPick:'Wybierz plik .epw',
+dropTitle:'Upuść tutaj plik pogodowy EPW',
+dropBody:'Plik <b>EnergyPlus Weather</b> zawiera 8 760 rekordów godzinowych — po jednym na każdą godzinę reprezentatywnego roku — opisujących temperaturę, wilgotność, promieniowanie słoneczne, wiatr i stan nieba w konkretnym miejscu na Ziemi. To narzędzie wczytuje plik w całości w Twojej przeglądarce i zamienia go w wykresy, które można czytać, analizować i eksportować.',
+ex1h:'Odczytaj cały rok jednym spojrzeniem',
+ex1p:'Każda zmienna z pliku jest przedstawiona jako roczny dywan — 365 dni w poziomie, 24 godziny w pionie — dzięki czemu kształt klimatu, jego pory roku i rytm dobowy stają się jednym obrazem. Wschód i zachód słońca są naniesione na wierzch.',
+ex2h:'Projektuj na podstawie wykresu psychrometrycznego',
+ex2p:'Cały rok jest rzutowany na wykres psychrometryczny ze strefami bioklimatycznymi Givoniego, w postaci przedstawionej przez Manzano-Agugliaro i in. (2015). Odsetek godzin przypadających na każdą strefę pokazuje, które strategie pasywne naprawdę mają znaczenie w tym miejscu.',
+ex3h:'Wiatr, słońce i komfort',
+ex3p:'Róże wiatrów według pory roku i godziny, stereograficzna droga słońca z naniesionymi temperaturami roku, pasma komfortu adaptacyjnego według EN 16798-1 oraz stopniodni. Wszystkie wykresy można eksportować do PNG lub CSV.',
+privacyNote:'Nic nie jest przesyłane. Plik nigdy nie opuszcza tego komputera.',
+wxTitle:'Nie masz jeszcze pliku pogodowego?',
+wxBody:'Climate Advisor nie dostarcza plików pogodowych. Pliki EPW publikują krajowe służby meteorologiczne, instytucje badawcze i twórcy oprogramowania; pobierz plik z wybranego przez siebie źródła, przestrzegaj dołączonych do niego warunków licencji i upuść go powyżej. Wybieraj stację o porównywalnej wysokości i odległości od wybrzeża, a nie tylko tę, która jest bliżej w kilometrach — w Polsce Gdańsk i Zakopane dzieli kilkaset kilometrów i należą do różnych światów klimatycznych.',
+footTag:'Czytnik plików EnergyPlus Weather, napisany dla studentów architektury, którzy muszą zrozumieć klimat, zanim zaczną dla niego projektować.',
+footAuthor:'Autor',
+footInst:'Afiliacja',
+footDev:'Opracowano z użyciem',
+footWx:'Pliki pogodowe',
+footWxSub:'Nie są dostarczane. Każdy użytkownik pozyskuje je z wybranego przez siebie źródła, na warunkach licencji tego źródła.',
+footPriv:'Prywatność',
+footPrivBody:'Pliki pogodowe są odczytywane w przeglądarce. Nic nie jest przesyłane.',
+footMethods:'Metody i źródła',
+footLegal:'© 2026 Carlos C. Duarte. Udostępniono na warunkach <a href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer">Licencji Publicznej Unii Europejskiej v. 1.2</a> (EUPL-1.2). Pliki pogodowe pozostają własnością wydających je organizacji, a warunki ich licencji towarzyszą plikowi — w szczególności serie IWEC i TMY nakładają ograniczenia na redystrybucję. To narzędzie dydaktyczne: opisuje klimat, nie symuluje budynku, a żadna wartość, którą generuje, nie powinna być używana w obliczeniach zgodności z przepisami bez niezależnej weryfikacji.'
+});
+
+/* --- privacidade e informação legal / prywatność i informacje prawne ------ */
+const LG_LINKS = {
+  gh:   'href="https://docs.github.com/en/site-policy/privacy-policies/github-general-privacy-statement" target="_blank" rel="noopener noreferrer"',
+  cnpd: 'href="https://www.cnpd.pt" target="_blank" rel="noopener noreferrer"',
+  uodo: 'href="https://uodo.gov.pl" target="_blank" rel="noopener noreferrer"',
+  eupl: 'href="https://interoperable-europe.ec.europa.eu/collection/eupl/eupl-text-eupl-12" target="_blank" rel="noopener noreferrer"'
+};
+Object.assign(STATIC_PT, {
+footLegalLink:'Privacidade e informação legal',
+lgSum:'Privacidade e informação legal',
+lgIntro:'Esta informação é prestada ao abrigo do Regulamento Geral sobre a Protecção de Dados — Regulamento (UE) 2016/679 (RGPD) —, da Directiva 2002/58/CE relativa à privacidade nas comunicações electrónicas e das leis que as executam em Portugal e na Polónia. Vale também como condições de utilização deste serviço, incluindo para efeitos do art. 8.º da lei polaca de 18 de Julho de 2002 sobre a prestação de serviços por via electrónica.',
+lgWhoH:'Responsável',
+lgWho:'O Climate Advisor é uma ferramenta de ensino gratuita e sem fins comerciais, e um projecto pessoal de <b>Carlos C. Duarte</b> (Portugal), que é o único responsável por ela. A filiação na Faculdade de Arquitetura da Universidade de Lisboa é indicada apenas para identificação; a ferramenta não é publicada pela Universidade nem em seu nome. Contacto: <a class="js-contact"></a>.',
+lgDataH:'O que a aplicação trata',
+lgData:'Nenhum dado pessoal seu. Um ficheiro climático que abra é lido e analisado inteiramente no seu navegador; nunca é enviado, e nada do que faz na página é transmitido ao autor ou a terceiros. A página não tem contas, formulários, ferramentas de análise, publicidade, cookies de rastreamento, módulos de redes sociais, nem tipos de letra ou scripts carregados do exterior.',
+lgHostH:'Alojamento',
+lgHost:'A página é servida pelo GitHub Pages, um serviço da GitHub, Inc. (Estados Unidos). Para entregar a página e proteger o serviço, a GitHub trata dados técnicos de ligação, incluindo o seu endereço IP, nos termos da sua própria <a ' + LG_LINKS.gh + '>declaração de privacidade</a>, que descreve também as garantias que aplica às transferências para fora da União Europeia. O autor não tem acesso a esses dados. O fundamento jurídico do recurso a um serviço de alojamento é o interesse legítimo em disponibilizar a ferramenta (art. 6.º, n.º 1, alínea f), do RGPD).',
+lgStoreH:'Armazenamento no seu navegador',
+lgStore:'A página guarda um único elemento no armazenamento local do seu navegador: <code>ca-lang</code>, com a língua da interface (<code>en</code>, <code>pt</code> ou <code>pl</code>). Só é escrito quando escolhe uma língua, nunca sai do seu dispositivo e pode ser apagado a qualquer momento, limpando os dados deste sítio no navegador. Por ser estritamente necessário para prestar uma função que pediu, não exige consentimento, nos termos do art. 5.º, n.º 3, da Directiva 2002/58/CE, do art. 5.º da Lei n.º 41/2004, de 18 de Agosto, e do art. 399.º da lei polaca das comunicações electrónicas, de 12 de Julho de 2024. Por isso não é apresentado qualquer aviso de cookies.',
+lgMapH:'Ligações a terceiros',
+lgMap:'Depois de carregada, a página não faz qualquer pedido à rede. O seu navegador só contacta terceiros se seguir uma ligação externa (por exemplo, doi.org, NOAA, EnergyPlus, a página da EUPL ou uma autoridade de controlo); esse sítio recebe então o seu endereço IP e os dados habituais do pedido, nos termos da sua própria política de privacidade.',
+lgRightsH:'Os seus direitos',
+lgRights:'Nos termos dos artigos 15.º a 22.º do RGPD, tem os direitos de acesso, rectificação, apagamento, limitação do tratamento, portabilidade e oposição. Como o autor não detém dados pessoais dos visitantes, esses pedidos não encontrarão, em regra, nada sobre que incidir, mas podem ser dirigidos a <a class="js-contact"></a>; os pedidos relativos aos dados de alojamento devem ser dirigidos à GitHub. Tem ainda o direito de apresentar reclamação a uma autoridade de controlo, em especial no Estado-Membro da sua residência habitual: em Portugal, a <a ' + LG_LINKS.cnpd + '>Comissão Nacional de Proteção de Dados (CNPD)</a>; na Polónia, o <a ' + LG_LINKS.uodo + '>Presidente do Gabinete de Proteção de Dados Pessoais (UODO)</a>.',
+lgTermsH:'Condições de utilização',
+lgTerms:'A ferramenta é disponibilizada gratuitamente, sem registo e sem contrato; a utilização começa quando a página é aberta e termina quando é fechada. Requer um navegador actual com JavaScript activo. Os utilizadores não submetem conteúdos ao serviço; é proibido fornecer, por qualquer meio, conteúdos de carácter ilícito. Comentários e reclamações podem ser enviados para <a class="js-contact"></a> e terão resposta no prazo de 14 dias.',
+lgLiabH:'Exclusão de responsabilidade',
+lgLiab:'O Climate Advisor é um instrumento pedagógico disponibilizado «tal como está», sem garantia de exactidão, completude ou adequação a um fim específico. Os seus resultados descrevem um clima; não são uma simulação do edifício e não devem ser usados para demonstrar o cumprimento de regulamentos de desempenho energético ou de conforto sem verificação independente. Na medida permitida por lei, o autor não assume responsabilidade por decisões tomadas com base nos seus resultados; isto não limita a responsabilidade que não possa ser excluída pela lei aplicável, nomeadamente por dolo ou culpa grave. O autor não fornece, aloja nem distribui ficheiros climáticos e não é responsável pelo seu conteúdo, exactidão ou licenciamento; cada utilizador obtém-nos de forma independente, e continuam sujeitos às condições de licença das organizações que os emitiram.',
+lgLicH:'Licença',
+lgLic:'O código-fonte é distribuído ao abrigo da <a ' + LG_LINKS.eupl + '>Licença Pública da União Europeia v. 1.2</a> (EUPL-1.2), disponível em todas as línguas oficiais da UE, todas com o mesmo valor jurídico. Pode utilizá-lo, estudá-lo, modificá-lo e redistribuí-lo; uma versão modificada que seja distribuída ou disponibilizada em linha tem de ser publicada ao abrigo da mesma licença ou de uma licença compatível indicada no seu Apêndice. O texto integral encontra-se no ficheiro <code>LICENSE</code> do repositório.',
+lgDate:'Última actualização: 5 de Outubro de 2026.'
+});
+Object.assign(STATIC_PL, {
+footLegalLink:'Prywatność i informacje prawne',
+lgSum:'Prywatność i informacje prawne',
+lgIntro:'Niniejsza informacja jest udzielana na podstawie ogólnego rozporządzenia o ochronie danych — rozporządzenia (UE) 2016/679 (RODO), dyrektywy 2002/58/WE o prywatności i łączności elektronicznej oraz przepisów, które je wdrażają w Portugalii i w Polsce. Stanowi ona również regulamin korzystania z tej usługi, w tym w rozumieniu art. 8 ustawy z dnia 18 lipca 2002 r. o świadczeniu usług drogą elektroniczną.',
+lgWhoH:'Kto odpowiada',
+lgWho:'Climate Advisor jest bezpłatnym, niekomercyjnym narzędziem dydaktycznym i prywatnym projektem <b>Carlosa C. Duarte</b> (Portugalia), który ponosi za nie wyłączną odpowiedzialność. Afiliacja na Wydziale Architektury Uniwersytetu Lizbońskiego (Faculdade de Arquitetura, Universidade de Lisboa) jest podana wyłącznie w celu identyfikacji; narzędzie nie jest publikowane przez Uniwersytet ani w jego imieniu. Kontakt: <a class="js-contact"></a>.',
+lgDataH:'Co przetwarza aplikacja',
+lgData:'Żadnych Twoich danych osobowych. Otwarty plik pogodowy jest odczytywany i analizowany wyłącznie w Twojej przeglądarce; nigdy nie jest przesyłany, a nic, co robisz na stronie, nie jest przekazywane autorowi ani nikomu innemu. Strona nie ma kont, formularzy, narzędzi analitycznych, reklam, śledzących plików cookie, wtyczek mediów społecznościowych ani czcionek czy skryptów ładowanych z zewnątrz.',
+lgHostH:'Hosting',
+lgHost:'Stronę dostarcza GitHub Pages — usługa GitHub, Inc. (Stany Zjednoczone). Aby udostępnić stronę i chronić usługę, GitHub przetwarza techniczne dane połączenia, w tym Twój adres IP, zgodnie z własnym <a ' + LG_LINKS.gh + '>oświadczeniem o prywatności</a>, które opisuje także zabezpieczenia stosowane przy przekazywaniu danych poza Unię Europejską. Autor nie ma dostępu do tych danych. Podstawą prawną korzystania z usługi hostingu jest prawnie uzasadniony interes polegający na udostępnieniu narzędzia (art. 6 ust. 1 lit. f RODO).',
+lgStoreH:'Przechowywanie w Twojej przeglądarce',
+lgStore:'Strona zapisuje w pamięci lokalnej (localStorage) przeglądarki jeden element: <code>ca-lang</code>, zawierający język interfejsu (<code>en</code>, <code>pt</code> lub <code>pl</code>). Jest on zapisywany tylko wtedy, gdy wybierzesz język, nigdy nie opuszcza Twojego urządzenia i można go w każdej chwili usunąć, czyszcząc dane tej witryny w przeglądarce. Ponieważ jest niezbędny do świadczenia funkcji, o którą prosisz, nie wymaga zgody na podstawie art. 5 ust. 3 dyrektywy 2002/58/WE, art. 5 portugalskiej ustawy nr 41/2004 oraz art. 399 ustawy z dnia 12 lipca 2024 r. — Prawo komunikacji elektronicznej. Z tego powodu nie jest wyświetlany baner dotyczący plików cookie.',
+lgMapH:'Połączenia z podmiotami trzecimi',
+lgMap:'Po załadowaniu strona nie wysyła żadnych żądań sieciowych. Twoja przeglądarka łączy się z podmiotem trzecim tylko wtedy, gdy skorzystasz z zewnętrznego odnośnika (na przykład doi.org, NOAA, EnergyPlus, strona EUPL lub organ nadzorczy); dana witryna otrzymuje wówczas Twój adres IP i standardowe dane żądania zgodnie z własną polityką prywatności.',
+lgRightsH:'Twoje prawa',
+lgRights:'Zgodnie z art. 15–22 RODO przysługuje Ci prawo dostępu do danych, ich sprostowania, usunięcia, ograniczenia przetwarzania i przenoszenia oraz prawo sprzeciwu. Ponieważ autor nie przechowuje danych osobowych odwiedzających, takie żądania z reguły nie będą miały czego dotyczyć, ale można je kierować na adres <a class="js-contact"></a>; żądania dotyczące danych hostingowych należy kierować do GitHub. Masz również prawo wniesienia skargi do organu nadzorczego, w szczególności w państwie członkowskim swojego zwykłego pobytu: w Polsce do <a ' + LG_LINKS.uodo + '>Prezesa Urzędu Ochrony Danych Osobowych (UODO)</a>, w Portugalii do <a ' + LG_LINKS.cnpd + '>Comissão Nacional de Proteção de Dados (CNPD)</a>.',
+lgTermsH:'Regulamin',
+lgTerms:'Narzędzie jest udostępniane bezpłatnie, bez rejestracji i bez zawierania umowy; korzystanie rozpoczyna się z chwilą otwarcia strony i kończy z chwilą jej zamknięcia. Wymagana jest aktualna przeglądarka internetowa z włączoną obsługą JavaScript. Użytkownicy nie przekazują do usługi żadnych treści; zakazane jest dostarczanie, w jakikolwiek sposób, treści o charakterze bezprawnym. Uwagi i reklamacje można przesyłać na adres <a class="js-contact"></a>; odpowiedź zostanie udzielona w ciągu 14 dni.',
+lgLiabH:'Wyłączenie odpowiedzialności',
+lgLiab:'Climate Advisor jest narzędziem dydaktycznym udostępnianym „w stanie, w jakim jest”, bez gwarancji dokładności, kompletności ani przydatności do określonego celu. Jego wyniki opisują klimat; nie stanowią symulacji budynku i nie mogą być wykorzystywane do wykazywania zgodności z przepisami w zakresie charakterystyki energetycznej lub komfortu bez niezależnej weryfikacji. W zakresie dozwolonym przez prawo autor nie ponosi odpowiedzialności za decyzje podjęte na podstawie uzyskanych wyników; nie ogranicza to odpowiedzialności, której nie można wyłączyć na mocy obowiązującego prawa, w szczególności za szkodę wyrządzoną umyślnie lub wskutek rażącego niedbalstwa. Autor nie dostarcza, nie przechowuje ani nie rozpowszechnia plików pogodowych i nie odpowiada za ich treść, dokładność ani licencje; każdy użytkownik pozyskuje je samodzielnie, a pozostają one objęte warunkami licencji organizacji, które je wydały.',
+lgLicH:'Licencja',
+lgLic:'Kod źródłowy jest udostępniany na warunkach <a ' + LG_LINKS.eupl + '>Licencji Publicznej Unii Europejskiej v. 1.2</a> (EUPL-1.2), dostępnej we wszystkich językach urzędowych UE, z których każdy ma jednakową moc prawną. Możesz go używać, analizować, modyfikować i rozpowszechniać; zmodyfikowana wersja, która jest rozpowszechniana lub udostępniana online, musi zostać opublikowana na warunkach tej samej licencji lub licencji zgodnej wymienionej w jej Dodatku. Pełny tekst znajduje się w pliku <code>LICENSE</code> w repozytorium.',
+lgDate:'Ostatnia aktualizacja: 5 października 2026 r.'
 });
 
 /* --- language ------------------------------------------------------------- */
@@ -4847,79 +5498,45 @@ function applyStatic() {
   $$('[data-t]').forEach(n => {
     const key = n.getAttribute('data-t');
     if (n._en === undefined) n._en = n.innerHTML;
-    const pt = STATIC_PT[key];
-    n.innerHTML = (LANG === 'pt' && pt !== undefined) ? pt : n._en;
+    const tr = LANG === 'en' ? undefined : STATIC[LANG][key];
+    n.innerHTML = tr !== undefined ? tr : n._en;
+  });
+  // the controller's address lives in one place, APP.contact
+  $$('.js-contact').forEach(a => {
+    if (APP.contact) { a.href = 'mailto:' + APP.contact; a.textContent = APP.contact; }
+    else { a.removeAttribute('href'); a.textContent = '[contact e-mail]'; }
   });
 }
-function setLanguage(lang) {
-  if (lang !== 'en' && lang !== 'pt') lang = 'en';
+const TITLE_SUFFIX = { en: 'EPW Weather File Explorer', pt: 'Explorador de ficheiros EPW', pl: 'Eksplorator plików pogodowych EPW' };
+/** The choice is stored only when the visitor makes it (persist), as the privacy notice states. */
+function setLanguage(lang, persist) {
+  if (!(lang in LOCALE)) lang = 'en';
   LANG = lang;
-  try { localStorage.setItem('ca-lang', lang); } catch (e) {}
+  if (persist) try { localStorage.setItem('ca-lang', lang); } catch (e) {}
   applyLanguage();
   applyStatic();
   $$('#langsel button').forEach(b => b.setAttribute('aria-pressed', b.dataset.lang === lang ? 'true' : 'false'));
   document.title = STATE.epw ? APP.name + ' — ' + STATE.epw.loc.city
-                             : APP.name + (LANG === 'pt' ? ' — Explorador de ficheiros EPW' : ' — EPW Weather File Explorer');
+                             : APP.name + ' — ' + TITLE_SUFFIX[LANG];
   if (STATE.epw) mountApp(STATE.epw, STATE.tab);   // rebuild every page in the new language
 }
-$$('#langsel button').forEach(b => b.addEventListener('click', () => setLanguage(b.dataset.lang)));
+$$('#langsel button').forEach(b => b.addEventListener('click', () => setLanguage(b.dataset.lang, true)));
+// the footer link and any #legal address open the collapsed notice
+function openLegal() { const d = $('#legal'); if (d) { d.open = true; d.scrollIntoView({ block:'start' }); } }
+$('#legalLink').addEventListener('click', e => { e.preventDefault(); openLegal(); });
+if (location.hash === '#legal') openLegal();
 (function initLanguage() {
   let saved = null;
   try { saved = localStorage.getItem('ca-lang'); } catch (e) {}
-  if (!saved && /^pt\b/i.test(navigator.language || '')) saved = 'pt';
+  if (!saved) {
+    const m = /^(pt|pl)\b/i.exec(navigator.language || '');
+    if (m) saved = m[1].toLowerCase();
+  }
   setLanguage(saved || 'en');
 })();
 
 /* --- version stamp -------------------------------------------------------- */
 $('#footVer').textContent = 'v' + APP.version;
-
-/* --- embedded weather-file map -------------------------------------------
-   The iframe is created only when the student asks for it, so the application
-   makes no network request of any kind unless that button is pressed. A
-   cross-origin frame gives us no view of its contents, so failure is inferred
-   from the browser's offline flag and from a load event that never arrives. */
-(function epwMap() {
-  const btn = $('#btnMap'), frame = $('#mapFrame'), status = $('#mapStatus'), hint = $('#mapHint');
-  if (!btn) return;
-  let iframe = null, open = false, timer = 0;
-
-  const fail = (title, detail) => {
-    status.classList.remove('gone');
-    status.innerHTML = '';
-    status.appendChild(el('b', { text:title }));
-    status.appendChild(el('span', { html:detail }));
-  };
-
-  btn.addEventListener('click', () => {
-    if (open) {                                   // collapse, but keep it loaded
-      open = false; frame.classList.remove('on'); hint.hidden = true;
-      btn.textContent = 'Open the map here';
-      return;
-    }
-    open = true; frame.classList.add('on'); hint.hidden = false;
-    btn.textContent = 'Hide the map';
-
-    if (iframe) return;                           // already loaded once
-    if (navigator.onLine === false) {
-      fail('This computer appears to be offline.',
-           'The map needs a connection. You can still drop a weather file you already have, or download one later from '
-           + '<a href="' + APP.epwSource + '" target="_blank" rel="noopener noreferrer">ladybug.tools/epwmap</a>.');
-      return;
-    }
-    iframe = el('iframe', {
-      src: APP.epwSource,
-      title: 'Ladybug Tools EPWMap — worldwide weather file downloads',
-      referrerpolicy: 'no-referrer',
-      sandbox: 'allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox allow-downloads allow-forms'
-    });
-    iframe.addEventListener('load', () => { clearTimeout(timer); status.classList.add('gone'); });
-    timer = setTimeout(() => fail('The map is taking longer than expected.',
-      'It may be blocked by a network policy. Try '
-      + '<a href="' + APP.epwSource + '" target="_blank" rel="noopener noreferrer">opening it in a new tab</a> instead.'), 14000);
-    frame.appendChild(iframe);
-    frame.scrollIntoView({ behavior:'smooth', block:'nearest' });
-  });
-})();
 
 const drop = $('#drop'), fileInput = $('#fileInput');
 $('#btnPick').addEventListener('click', () => fileInput.click());
